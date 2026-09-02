@@ -1,0 +1,41 @@
+.form-simple input[type="text"] {
+    margin-bottom: -1px;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.form-simple input[type="mail"] {
+    margin-bottom: -1px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.form-simple input[type="password"] {
+    margin-bottom: -1px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.help-block ul {
+    margin: 0  !important;
+    padding: 0 !important;
+}
+
+.help-block ul li {
+    list-style: none;
+}
+
+.form-control-position-right {
+    left: auto;
+    top: 4px;
+    position: absolute;
+    right: 0;
+    z-index: 2;
+    display: block;
+    width: 2.5rem;
+    height: 2.5rem;
+    line-height: 2.5rem;
+    text-align: center;
+}

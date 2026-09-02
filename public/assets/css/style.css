@@ -1,0 +1,91 @@
+/*================================================================================
+	Item Name: Stack - Responsive Admin Theme
+	Author: PIXINVENT
+	Author URL: http://www.themeforest.net/user/pixinvent
+================================================================================
+
+NOTE:
+------
+PLACE HERE YOUR OWN SCSS CODES AND IF NEEDED, OVERRIDE THE STYLES FROM THE OTHER STYLESHEETS.
+WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BETTER LIKE THIS.  */
+
+.table th,
+.table td {
+    vertical-align: middle !important;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+	-webkit-appearance: none !important;
+	margin: 0 !important;
+}
+
+input[type="number"] {
+	-moz-appearance: textfield !important;
+}
+
+
+div.dt-buttons{
+    margin-bottom: 10px !important;
+}
+
+
+.buttons-excel{
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.buttons-excel:hover{
+    background-color: #218838 !important;
+    border-color: #1e7e34 !important;
+}
+
+.buttons-pdf{
+    background-color: #b92130 !important;
+    border-color: #dc3545 #b92130!important;
+}
+
+.buttons-pdf:hover{
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+}
+
+.buttons-print{
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+}
+
+.buttons-print:hover{
+    background-color: #0069d9 !important;
+    border-color: #0062cc !important;
+}
+
+
+.report-filter .form-group{
+    margin-bottom: 0px;
+    margin-right: 3px;
+}
+
+select.form-control {
+    -webkit-appearance: auto !important;
+}
+
+div.dataTables_wrapper div.dataTables_length select {
+    background-image: none !important;
+}
+
+@media print {
+    table.dataTable {
+        width: 100% !important;
+    }
+}
+
+.g-2 {
+    --bs-gutter-x: 0.5rem;
+    /* horizontal gap */
+    --bs-gutter-y: 0.5rem;
+    /* vertical gap */
+}
+
+.gap-1 {
+    gap: .25rem !important;
+}
