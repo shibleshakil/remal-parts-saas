@@ -17,7 +17,7 @@ $url = \Route::currentRouteName();
         <datalist id="carNames">
             @foreach ($carNames as $c_name)
             <option value="{{$c_name}}">
-                @endforeach
+            @endforeach
         </datalist>
     </div>
 
@@ -56,8 +56,8 @@ $url = \Route::currentRouteName();
 
     <div class="col-md-6 form-group">
         <label>Purchase Date <span class="text-danger">*</span></label>
-        <div class="input-group date datetime">
-            <input type="text" name="date[]" class="form-control date-input" required
+        <div class="input-group">
+            <input type="date" name="date[]" class="form-control date-input" required
                 value="{{$purchaseLine->purchase_date ?? now()->format('Y-m-d') }}" />
             <div class="input-group-append">
                 <span class="input-group-text"><i class="fa fa-calendar"></i></span>
@@ -83,12 +83,15 @@ $url = \Route::currentRouteName();
                 </option>
                 @endforeach
             </select>
+
+            @can('supplier.create')
             <div class="input-group-append">
                 <button class="btn btn-primary" type="button" title="Add New Supplier" data-toggle="modal"
                     data-target="#inlineSupplierForm">
                     <i class="feather icon-plus"></i>
                 </button>
             </div>
+            @endcan
         </div>
     </div>
 
@@ -99,6 +102,7 @@ $url = \Route::currentRouteName();
             value="{{$purchaseLine->transaction?->paid_amount ?? ''}}">
         <input type="hidden" class="old-paid-amount" name="old_paid_amount[]" value="{{ $purchaseLine->transaction?->paid_amount ?? '' }}">
         <small class="balance-error text-danger pt-1" style="display:none;">Entered amount exceeds current balance!</small>
+        <small class="paid-error text-danger pt-1" style="display:none;">Paid amount cannot exceed total purchase amount!</small>
     </div>
 
     <div class="col-md-6 form-group">
@@ -144,11 +148,13 @@ $url = \Route::currentRouteName();
                         </option>
                         @endforeach
                     </select>
+                    @can('banks.create')
                     <div class="input-group-append">
                         <button class="btn btn-primary" type="button" data-toggle="modal" data-target="#inlineBankForm">
                             <i class="feather icon-plus"></i>
                         </button>
                     </div>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -181,10 +187,10 @@ $url = \Route::currentRouteName();
 </div>
 
 <div class="col-md-6 form-group">
-    <label for="date">Date <span class="text-danger">*</span></label>
-    <div class="input-group date datetime" id="date">
-        <input type="text" name="date" id="date_input" class="form-control date-input" required
-            value="{{ old('date', $url === 'spare-parts.edit' && isset($sale) ? $spareParts->date : now()->format('Y-m-d')) }}" />
+    <label for="date">Purchase Date <span class="text-danger">*</span></label>
+    <div class="input-group" id="date">
+        <input type="date" name="date" id="date_input" class="form-control date-input" required
+            value="{{ old('date', $url === 'spare-parts.edit' ? $spareParts->date : now()->format('Y-m-d')) }}" />
     </div>
 </div>
 
@@ -206,12 +212,15 @@ $url = \Route::currentRouteName();
                 </option>
                 @endforeach
             </select>
+
+            @can('supplier.create')
             <div class="input-group-append">
                 <button class="btn btn-primary" type="button" title="Add New Supplier" data-toggle="modal"
                     data-target="#inlineSupplierForm">
                     <i class="feather icon-plus"></i>
                 </button>
             </div>
+            @endcan
         </div>
     </div>
 </div>
@@ -223,6 +232,7 @@ $url = \Route::currentRouteName();
         value="{{ old('paid_amount', $url === 'spare-parts.edit' ? $spareParts->paid_amount : '') }}">
 
     <small id="balanceError" class="text-danger pt-1" style="display:none;">Entered amount exceeds current balance!</small>
+    <small id="paidError" class="text-danger pt-1" style="display:none;">Paid amount cannot exceed total purchase amount!</small>
 </div>
 
 <div class="col-md-6 form-group">
@@ -264,12 +274,15 @@ $url = \Route::currentRouteName();
                 <option value="{{$bank->id}}" {{$url == 'spare-parts.edit' && $spareParts->bank_id == $bank->id ? 'selected' : '' }}>Name: {{ $bank->bank_name }} - Account Name: {{ $bank->account_name }} - Account No: {{ $bank->account_no }}</option>
                 @endforeach
             </select>
+
+            @can('banks.create')
             <div class="input-group-append">
                 <button class="btn btn-primary" type="button" title="Add New Customer" data-toggle="modal"
                     data-target="#inlineBankForm">
                     <i class="feather icon-plus"></i>
                 </button>
             </div>
+            @endcan
         </div>
     </div>
 </div>

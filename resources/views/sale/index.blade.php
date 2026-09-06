@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('sales.create')
                 <a href="{{ route('sales.create') }}" class="btn btn-primary">
                     {{ __('Add Sale') }} <i class="feather icon-plus"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -103,34 +105,43 @@
                                                             <button type="button" class="dropdown-item" data-toggle="modal" data-target="#partsDetails{{ $data->id }}">
                                                                 <i class="fa fa-eye"></i> Products
                                                             </button>
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+
+                                                            @can('sales.edit')
                                                             <a href="{{ route('sales.edit', $data->id) }}"
                                                                 class="dropdown-item" title="Edit">
                                                                 <i class="feather icon-edit-2"></i> Edit
                                                             </a>
-                                                            @endif
+                                                            @endcan
 
+                                                            @can('sales.show')
                                                             <a href="{{ route('sales.show', $data->id) }}"
                                                                 target="_blank"
                                                                 class="dropdown-item" title="Invoice">
                                                                 <i class="feather icon-file"></i> Show Invoice
                                                             </a>
+                                                            @endcan
 
+
+                                                            @can('sales.returnForm')
                                                             <a href="{{ route('sales.returnForm', $data->id) }}" class="dropdown-item" title="Return">
                                                                 <i class="feather icon-minus-circle"></i> Return / Exchange Parts
                                                             </a>
+                                                            @endcan
 
-                                                            @if($data->final_amount > $data->paid_amount)
-                                                            <a href="{{ route('sales.pay-due', $data->id) }}" class="dropdown-item" title="Pay Due">
-                                                                <i class="feather icon-dollar-sign"></i> Due Pay
-                                                            </a>
-                                                            @endif
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @can('sales.pay-due')
+                                                                @if($data->final_amount > $data->paid_amount)
+                                                                <a href="{{ route('sales.pay-due', $data->id) }}" class="dropdown-item" title="Pay Due">
+                                                                    <i class="feather icon-dollar-sign"></i> Due Pay
+                                                                </a>
+                                                                @endif
+                                                            @endcan
+
+                                                            @can('sales.delete')
                                                             <button type="button" class="dropdown-item" title="Delete"
                                                                 onclick="deleteData('{{ route('sales.delete', $data->id) }}')">
                                                                 <i class="feather icon-trash"></i> Delete
                                                             </button>
-                                                            @endif
+                                                            @endcan
                                                         </div>
                                                     </div>
                                                     <!-- Modal -->

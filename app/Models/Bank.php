@@ -15,6 +15,6 @@ class Bank extends Model
         'account_name',
         'account_no',
         'branch',
-        'status',
+        'status'
     ];
 }

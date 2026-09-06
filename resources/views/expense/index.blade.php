@@ -6,9 +6,11 @@
         <div class="content-header row">
             <div class="content-header-left col-md-6 col-12 mb-1">
                 <h3 class="content-header-title">
+                    @can('expense.create')
                     <a href="{{ route('expense.create') }}" class="btn btn-primary">
                         {{ __('Add Expense') }} <i class="feather icon-plus"></i>
                     </a>
+                    @endcan
                 </h3>
             </div>
             <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -81,14 +83,18 @@
                                                             class="btn btn-secondary">{{ __('Reset') }}</a>
                                                     </div>
                                                 </div>
-                                                 <div class="">
+                                                <div class="">
+                                                    @can('expenses.export')
+                                                    <a href="{{ route('expense.export', request()->query()) }}" class="btn btn-md btn-success">
+                                                        <i class="fa fa-file-excel"></i> {{ __('Export') }}
+                                                    </a>
+                                                    @endcan
 
-                                                <a href="{{ route('expense.export', request()->query()) }}" class="btn btn-md btn-success">
-                                                    <i class="fa fa-file-excel"></i> {{ __('Export') }}
-                                                </a>
-                                                <a href="{{ route('expense.print', request()->query()) }}" target="_blank" class="btn btn-md btn-info">
-                                                    <i class="fa fa-print"></i> {{ __('Print') }}
-                                                </a>
+                                                    @can('expenses.print')
+                                                    <a href="{{ route('expense.print', request()->query()) }}" target="_blank" class="btn btn-md btn-info">
+                                                        <i class="fa fa-print"></i> {{ __('Print') }}
+                                                    </a>
+                                                    @endcan
                                                  </div>
                                             </form>
                                         </div>
@@ -163,25 +169,29 @@
                                                                                                                         aria-expanded="false">
                                                                                                                         Action
                                                                                                                     </button>
-                                                                                                                    @if ( \App\Helpers\CommonHelper::userHasAccess() )
+
                                                                                                                     <div class="dropdown-menu">
+                                                                                                                        @can('expense.edit')
                                                                                                                         <a href="{{ route('expense.edit', $expense->id) }}"
                                                                                                                             class="dropdown-item" title="Edit">
                                                                                                                             <i class="fa fa-pencil"></i> Edit
                                                                                                                         </a>
+                                                                                                                        @endcan
 
+                                                                                                                        @can('expense.delete')
                                                                                                                         <button type="button" class="dropdown-item"
                                                                                                                             title="Delete"
                                                                                                                             onclick="deleteData('{{ route('expense.delete',$expense->id) }}')">
                                                                                                                             <i class="fa fa-trash"></i> Delete
                                                                                                                         </button>
+                                                                                                                        @endcan
                                                                                                                     </div>
-                                                                                                                    @endif
+
                                                                                                                 </div>
                                                                                                             </td>
                                                                                                             <td>{{ $loop->iteration }}</td>
                                                                                                             <td>{{ $expense->title ?? 'N/A' }}</td>
-                                                                                                            <td>{{\Carbon\Carbon::parse($expense->expense_date ?? null)->format('d M Y') }}</td>
+                                                                                                            <td>{{ $expense->expense_date ?? 'N/A' }}</td>
                                                                                                             <td class="text-right">{{ number_format(($expense->amount ?? 0), 2) }}</td>
                                                                                                             <td>{{ $expense->note ?? 'N/A' }}</td>
                                                                                                         </tr>

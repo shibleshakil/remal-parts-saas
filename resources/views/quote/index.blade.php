@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('quotes.create')
                 <a href="{{ route('quotes.create') }}" class="btn btn-primary">
                     {{ __('Add Quote') }} <i class="feather icon-plus"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -101,36 +103,45 @@
                                                             </button>
 
                                                             @if($data->status == 'pending')
+                                                                @can('quotes.convertToSale')
                                                                 <a href="{{ route('quotes.convertToSale', $data->id) }}"
                                                                     class="dropdown-item" title="Convert to Sale">
                                                                     <i class="feather icon-shopping-cart"></i> Convert to Sale
                                                                 </a>
+                                                                @endcan
 
-                                                                @if ( \App\Helpers\CommonHelper::userHasAccess() )
-                                                                    <a href="{{ route('quotes.edit', $data->id) }}"
-                                                                        class="dropdown-item" title="Edit">
-                                                                        <i class="feather icon-edit-2"></i> Edit
-                                                                    </a>
-                                                                @endif
+                                                                @can('quotes.edit')
+                                                                <a href="{{ route('quotes.edit', $data->id) }}"
+                                                                    class="dropdown-item" title="Edit">
+                                                                    <i class="feather icon-edit-2"></i> Edit
+                                                                </a>
+                                                                @endcan
+
                                                             @else
                                                                 @if (isset($data->sale_id))
+                                                                    @can('sales.show')
                                                                     <a href="{{ route('sales.show', $data->sale_id) }}"
                                                                         class="dropdown-item" title="Sale Invoice" target="_blank">
                                                                         <i class="feather icon-shopping-cart"></i> Sale Invoice
                                                                     </a>
+                                                                    @endcan
                                                                 @endif
                                                             @endif
+                                                            @can('quotes.show')
                                                             <a href="{{ route('quotes.show', $data->id) }}"
                                                                 target="_blank"
                                                                 class="dropdown-item" title="Quotation">
                                                                 <i class="feather icon-file"></i> Print Quotation
                                                             </a>
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @endcan
+
+                                                            @can('quotes.delete')
                                                             <button type="button" class="dropdown-item" title="Delete"
                                                                 onclick="deleteData('{{ route('quotes.delete', $data->id) }}')">
                                                                 <i class="feather icon-trash"></i> Delete
                                                             </button>
-                                                            @endif
+                                                            @endcan
+
                                                         </div>
                                                     </div>
                                                     <!-- Modal -->

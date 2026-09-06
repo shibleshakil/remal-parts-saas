@@ -305,13 +305,12 @@
                     <tr>
                         <th>#</th>
                         <th>Invoice</th>
-                        <th>Date</th>
-                        <th>Item Description</th>
-                        <th style="text-align: right;">Selling Unit Price</th>
+                        <th>Item Name</th>
+                        <th style="text-align: right;">Sale Price</th>
                         <th style="text-align: center;">Qty</th>
-                        <th style="text-align: right;">Total Sale Price</th>
-                        <th style="text-align: right;">Purchase Unit Price</th>
-                        <th style="text-align: right;">Total Purchase Price</th>
+                        <th style="text-align: right;">Total Price</th>
+                        <th style="text-align: right;">Purchase Actual</th>
+                        <th style="text-align: right;">Purchase Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -356,10 +355,9 @@
                     <td style="text-align:right;">Total Purchase Price</td>
                     <td style="text-align: right;">${totalActualAmount.toFixed(2)}</td>
                 </tr>
-                <tr style="font-weight:bold;">
+                 <tr style="font-weight:bold;">
                     <td colspan="6" style="text-align:right;">Gross Profit:</td>
                     <td style="text-align: right;">${(totalAmount - totalActualAmount).toFixed(2)}</td>
-                    <td colspan="2"></td>
                 </tr>
             </tfoot>
             </table>
@@ -565,7 +563,5 @@
 
         });
     }
-
-
 </script>
 @endsection

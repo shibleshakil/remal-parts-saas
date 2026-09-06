@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('sales.index')
                 <a href="{{ route('sales.index') }}" class="btn btn-primary">
                     {{ __('Sale List') }} <i class="feather icon-eye"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">

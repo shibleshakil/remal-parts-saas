@@ -87,7 +87,11 @@ class ExpenseController extends Controller
 
     public function store(Request $request)
     {
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         if ($request->amount > $balance->balance) {
             if ($request->ajax()) {
@@ -118,10 +122,11 @@ class ExpenseController extends Controller
                 'expense_date' => $validated['expense_date'],
                 'amount' => $validated['amount'],
                 'note' => $validated['note'] ?? null,
+                'branch_id' => active_branch_id(),
                 'created_by' => auth()->id(),
             ]);
 
-            $balance->decrement('balance', $validated['amount']);
+            $balance->decrement('balance', $validated['amount'] ?? 0);
             $balance->refresh();
 
             Transaction::create([
@@ -134,7 +139,8 @@ class ExpenseController extends Controller
                 'status' => 'Paid',
                 'note' => $validated['note'] ?? null,
                 'created_by' => auth()->id(),
-                'current_balance' => $balance->balance
+                'current_balance' => $balance->balance,
+                'branch_id' => active_branch_id(),
             ]);
 
 
@@ -151,15 +157,6 @@ class ExpenseController extends Controller
 
     public function edit($id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $expense = Expense::findOrFail($id);
         $expenseTypes = ExpenseType::orderBy('name', 'asc')->get();
         return view('expense.edit', compact('expense', 'expenseTypes'));
@@ -167,20 +164,15 @@ class ExpenseController extends Controller
 
     public function update(Request $request, $id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $expense = Expense::findOrFail($id);
         $transaction = Transaction::where('expense_id', $expense->id)
                 ->whereNull('deleted_at')
                 ->first();
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         if (($request->amount - $transaction?->paid_amount ) > $balance->balance) {
             if ($request->ajax()) {
@@ -264,15 +256,6 @@ class ExpenseController extends Controller
 
     public function delete($id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         DB::beginTransaction();
 
         try {
@@ -295,7 +278,11 @@ class ExpenseController extends Controller
                 $transaction->delete();
             }
 
-            $balance = Balance::firstOrCreate([], ['balance' => 0]);
+            $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
             $balance->balance = $balance->balance + $totalPaidAmount;
             $balance->save();

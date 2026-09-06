@@ -6,13 +6,17 @@
         <div class="content-header row">
             <div class="content-header-left col-md-6 col-12 mb-1">
                 <h3 class="content-header-title">
+                    @can('balances.create')
                     <a href="{{ route('balances.create') }}" class="btn btn-primary">
                         {{ __('Balance In') }} <i class="feather icon-plus"></i>
                     </a>
+                    @endcan
 
+                    @can('balances-out.create')
                     <a href="{{ route('balances-out.create') }}" class="btn btn-danger">
                         {{ __('Balance Out') }} <i class="feather icon-minus"></i>
                     </a>
+                    @endcan
                 </h3>
             </div>
             <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -77,9 +81,6 @@
                                                             class="btn btn-secondary">{{ __('Reset') }}</a>
                                                     </div>
                                                 </div>
-
-
-
                                             </form>
                                         </div>
                                     </div>
@@ -116,7 +117,7 @@
                                                                 }
                                                             }}
                                                         </td>
-                                                       @php
+                                                        @php
                                                             $bankDetail = '';
                                                             if ($data->bank) {
                                                                 $bankDetail = 'Name: ' . e($data->bank->bank_name) .
@@ -127,31 +128,34 @@
 
                                                         <td>{!! $bankDetail !!}</td>
                                                         <td>
-                                                            <!-- @if(\App\Helpers\CommonHelper::userHasAccess()) -->
+
+                                                            @if ($data->type == 'balance_add')
+                                                                @can('balances.edit')
+                                                                <a href="{{ route('balances.edit', $data->id) }}"class="btn btn-md btn-primary" title="Edit">
+                                                                    <i class="feather icon-edit"></i>
+                                                                </a>
+                                                                @endcan
+                                                            @elseif($data->type == 'balance_out')
+                                                                @can('balances-out.edit')
+                                                                <a href="{{ route('balances-out.edit', $data->id) }}"class="btn btn-md btn-primary" title="Edit">
+                                                                    <i class="feather icon-edit"></i>
+                                                                </a>
+                                                                @endcan
+                                                            @endif
+
+
+                                                            @canAny(['balances.delete', 'balances-out.delete'])
+                                                            <button type="button" class="btn btn-md btn-danger"
+                                                                title="Delete"
                                                                 @if ($data->type == 'balance_add')
-                                                                    <a href="{{ route('balances.edit', $data->id) }}"class="btn btn-md btn-primary" title="Edit">
-                                                                        <i class="feather icon-edit"></i>
-                                                                    </a>
+                                                                    onclick="deleteData('{{ route('balances.delete', $data->id) }}')">
                                                                 @elseif($data->type == 'balance_out')
-                                                                    <a href="{{ route('balances-out.edit', $data->id) }}"class="btn btn-md btn-primary" title="Edit">
-                                                                        <i class="feather icon-edit"></i>
-                                                                    </a>
+                                                                    onclick="deleteData('{{ route('balances-out.delete', $data->id) }}')">
                                                                 @endif
-
-
-                                                                <button type="button" class="btn btn-md btn-danger"
-                                                                    title="Delete"
-                                                                    @if ($data->type == 'balance_add')
-                                                                        onclick="deleteData('{{ route('balances.delete', $data->id) }}')">
-                                                                    @elseif($data->type == 'balance_out')
-                                                                        onclick="deleteData('{{ route('balances-out.delete', $data->id) }}')">
-                                                                    @endif
-                                                                    <i class="feather icon-trash"></i>
-                                                                </button>
-                                                            <!-- @endif -->
-
+                                                                <i class="feather icon-trash"></i>
+                                                            </button>
+                                                            @endcanAny
                                                         </td>
-
                                                     </tr>
                                                 @empty
                                                     <tr>
@@ -160,7 +164,6 @@
                                                 @endforelse
                                             </tbody>
                                         </table>
-
                                     </div>
                                     <div>
                                         {{ $datas->links('pagination::bootstrap-5') }}

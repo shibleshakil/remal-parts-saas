@@ -9,7 +9,6 @@ use App\Models\Supplier;
 use App\Models\Transaction;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -45,6 +44,7 @@ class SupplierController extends Controller
         $suppliers = $query->with('transactions')->orderBy('id', 'DESC')
             ->paginate($perPage)
             ->withQueryString();
+
         foreach ($suppliers as $supplier) {
             $supplier->due_amount = $supplier->total_purchase_amount - $supplier->total_paid;
         }
@@ -76,7 +76,11 @@ class SupplierController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $supplier = Supplier::create($validator->validated());
+        $supplierData = $validator->validated();
+        $supplierData['created_by'] = auth()->user()->id;
+
+
+        $supplier = Supplier::create($supplierData);
 
         if ($request->ajax()) {
             return response()->json([
@@ -89,29 +93,15 @@ class SupplierController extends Controller
         return redirect()->route('supplier.index')->with("Success","Created Successfully");
     }
 
-    public function edit(string $id){
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
+    public function edit(string $id)
+    {
         $data = Supplier::find($id);
         return view('supplier.edit',['data'=>$data]);
     }
-    public function update(Request $request, string $id){
 
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-            $data = $request->validate([
+    public function update(Request $request, string $id)
+    {
+        $data = $request->validate([
             'name' => 'required',
             'phone' => 'required',
             'email' => 'required',
@@ -122,16 +112,8 @@ class SupplierController extends Controller
         return redirect()->route('supplier.index')->with('Success','Updated Successfully');
     }
 
-    public function destroy($id){
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
+    public function destroy($id)
+    {
         Supplier::find($id)->delete();
                 return response()->json([
                 'type' => 'success',
@@ -184,7 +166,11 @@ class SupplierController extends Controller
             $paymentMethod = $validated['payment_method'];
             $totaPaid = collect($validated['transetions'])->sum('payment');
 
-            $balance = Balance::firstOrCreate([], ['balance' => 0]);
+            $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
             if ($totaPaid > $balance->balance) {
                 if ($request->ajax()) {
@@ -211,8 +197,12 @@ class SupplierController extends Controller
                 }
 
 
-                $balance = Balance::firstOrCreate([], ['balance' => 0]);
-                $balance->decrement('balance', $transetionInput['payment']??0);
+                $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
+                $balance->decrement('balance', $transetionInput['payment'] ??0 );
                 $balance->refresh();
 
                 // Create transaction
@@ -232,6 +222,7 @@ class SupplierController extends Controller
                     'note' => $validated['payment_note']??null,
                     'created_by' => auth()->user()->id,
                     'purchase_invoice_no' => $transetionId??null,
+                    'branch_id' => active_branch_id(),
                 ]);
 
             }

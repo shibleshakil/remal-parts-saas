@@ -6,9 +6,11 @@
         <div class="content-header row">
             <div class="content-header-left col-md-6 col-12 mb-1">
                 <h3 class="content-header-title">
+                    @can('spare-parts.index')
                     <a href="{{ route('spare-parts.index') }}" class="btn btn-primary">
                         {{ __('Spare Parts List') }} <i class="feather icon-eye"></i>
                     </a>
+                    @endcan
                 </h3>
             </div>
             <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -68,6 +70,27 @@
         const partsQuantity = parseFloat($('#parts_quantity').val()) || 0;
         const total = unitPrice * partsQuantity;
         $('#total_parts_price').val(total.toFixed(2));
+        calculateDue();
+    }
+
+    function calculateDue() {
+        const total = parseFloat($('#total_parts_price').val()) || 0;
+        const paid = parseFloat($('#paid_amount').val()) || 0;
+        const due = total - paid;
+        $('#dueAmount').val(due >= 0 ? due.toFixed(2) : 0);
+        validatePaidAmount(paid, total);
+    }
+
+    function validatePaidAmount(paid, total) {
+        const errorEl = document.getElementById('paidError');
+        const input = document.getElementById('paid_amount');
+        if (paid > total) {
+            errorEl.style.display = 'block';
+            input.classList.add('is-invalid');
+        } else {
+            errorEl.style.display = 'none';
+            input.classList.remove('is-invalid');
+        }
     }
 
     $('#unit_price, #parts_quantity').on('input', calculateTotal);
@@ -87,14 +110,7 @@
     });
 
     $(document).on('input', '#paid_amount', function () {
-        let total_parts_price = parseFloat($('#total_parts_price').val()) || 0;
-        let paid_amount = parseFloat($('#paid_amount').val()) || 0;
-
-        if(total_parts_price > 0 && paid_amount > 0){
-            $('#dueAmount').val(total_parts_price - paid_amount);
-        } else {
-            $('#dueAmount').val(total_parts_price); // optional: reset to total if paid = 0
-        }
+        calculateDue();
     });
 
     $('#addBankForm').on('submit', function(e) {
@@ -182,6 +198,20 @@
                     submitBtn.find('.spinner-border').remove();
                     return false;
                 }
+            }
+
+            const total = parseFloat($('#total_parts_price').val()) || 0;
+            const paid = parseFloat($('#paid_amount').val()) || 0;
+            if (paid > total) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Invalid Paid Amount',
+                    text: 'Paid amount cannot be greater than the total purchase amount!'
+                });
+                submitBtn.removeAttr('disabled');
+                submitBtn.find('.spinner-border').remove();
+                return false;
             }
         })
     });

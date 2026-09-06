@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('customer.index')
                 <a href="{{ route ('customer.index')}}" class="btn btn-primary">
                     {{ __('Customer List') }} <i class="feather icon-eye"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -100,7 +102,7 @@
                                                     $total = $transaction->final_amount;
                                                     $paid = $transaction->paid_amount;
                                                     $due = $total - $paid;
-                                                    $balance = $balance + $total - $paid;
+                                                    $balance + $total - $paid;
 
                                                 @endphp
                                             <tr>

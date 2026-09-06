@@ -108,12 +108,12 @@
 
     <script src="{{ asset ('public/assets/js/dropify-init.js')}}"></script>
     <script src="{{ asset ('public/assets/js/dropify.min.js')}}"></script>
-    <script src="{{ asset ('public/assets/js/scripts.js?v7')}}"></script>
+    <script src="{{ asset ('public/assets/js/scripts.js?v8')}}"></script>
     <script src="{{ asset ('public/assets/js/datatable.js')}}"></script>
     <script src="{{ asset('public/app-assets/js/scripts/pickers/dateTime/bootstrap-datetime.js') }}"></script>
     <!-- END: Theme JS-->
     <script type="text/javascript">
-        $(function() {
+        $(function () {
 
             $(".select2").select2();
             $('.datetime').datetimepicker({
@@ -122,7 +122,7 @@
             });
         })
 
-        $('form').on('submit', function(e) {
+        $('form').on('submit', function (e) {
             let formEl = this;
             let submitBtn = $(this).find('button[type="submit"]');
             submitBtn.attr('disabled', 'disabled');

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Milon\Barcode\DNS1D;
-use Milon\Barcode\DNS2D;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\Scopes\BranchScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Milon\Barcode\DNS1D;
+use Milon\Barcode\DNS2D;
 
 class Vehicle extends Model
 {
@@ -79,7 +80,7 @@ class Vehicle extends Model
         if (!$sample->uid) {
             $total = self::withTrashed()->count();
             $uid = $total + 1;
-            $sample->uid = "CAR" . sprintf('%03d', $uid);
+            $sample->uid = "CAR" . sprintf('%03d', $uid) . "-B". $sample->branch_id;
         }
 
         // Generate barcode path if not exists

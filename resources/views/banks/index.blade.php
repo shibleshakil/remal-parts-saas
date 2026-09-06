@@ -6,12 +6,17 @@
         <div class="content-header row">
             <div class="content-header-left col-md-6 col-12 mb-1">
                 <h3 class="content-header-title">
+                    @can('banks.create')
                     <a href="{{ route('banks.create') }}" class="btn btn-primary">
                         {{ __('Add Bank') }} <i class="feather icon-plus"></i>
                     </a>
+                    @endcan
+
+                    @can('banks.trash')
                     <a href="{{route('banks.trash')}}" class="btn btn-warning">
                         {{ __('View Trashed') }}
                     </a>
+                    @endcan
                 </h3>
             </div>
             <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -82,7 +87,6 @@
                                                     <th>Account No</th>
                                                     <th>Branch</th>
                                                     <th>Action</th>
-
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -93,21 +97,22 @@
                                                         <td>{{ $data->account_name }}</td>
                                                         <td>{{ $data->account_no }}</td>
                                                         <td>{{ $data->branch }}</td>
-
-                                                        @if ( \App\Helpers\CommonHelper::userHasAccess() )
                                                         <td>
+                                                            @can('banks.edit')
                                                             <a href="{{ route('banks.edit', $data->id) }}"
-                                                                class="btn btn-md btn-primary" title="Edit"><i
-                                                                    class="feather icon-edit"></i></a>
+                                                                class="btn btn-md btn-primary" title="Edit">
+                                                                <i class="feather icon-edit"></i>
+                                                            </a>
+                                                            @endcan
 
+                                                            @can('banks.delete')
                                                             <button type="button" class="btn btn-md btn-danger"
                                                                 title="Delete"
                                                                 onclick="deleteData('{{ route('banks.delete', $data->id) }}')">
                                                                 <i class="feather icon-trash"></i>
                                                             </button>
+                                                            @endcan
                                                         </td>
-                                                        @endif
-
                                                     </tr>
                                                 @empty
                                                     <tr>
@@ -116,7 +121,6 @@
                                                 @endforelse
                                             </tbody>
                                         </table>
-
                                     </div>
                                     <div>
                                         {{ $datas->links('pagination::bootstrap-5') }}

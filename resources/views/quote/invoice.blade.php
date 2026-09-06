@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Remal Al Awafi Quotation</title>
+    <title>Remal Al WAFI Quotation</title>
     <link rel="shortcut icon" type="image/x-icon" href="{{ asset('public/app-assets/images/ico/favicon.ico') }}">
     <!-- Using a basic, widely available font -->
     <style>
@@ -405,7 +405,7 @@
             <!-- Simplified Logo Area -->
             <h1 style="font-size: 20px;">
                 <span style="color: rgba(255, 0, 0, 0.87); font-size: 30px">رمال العوافي لتجارة السيارات المستعملة وقطع غيار داد . مم شش و</span> <br>
-                <span style="color: #304A8B; font-size: 30px">REMAL AL AWAFI</span> <br>
+                <span style="color: #304A8B; font-size: 30px">REMAL AL WAFI</span> <br>
                 <span style="color: rgba(255, 0, 0, 0.87);"> USED CARS & SPARE PARTS TR. LLC S.P</span>
             </h1>
         </div>

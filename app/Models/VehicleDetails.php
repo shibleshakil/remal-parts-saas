@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Milon\Barcode\DNS1D;
-use Milon\Barcode\DNS2D;
-use Illuminate\Support\Facades\Log;
+use App\Models\Scopes\BranchScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Log;
+use Milon\Barcode\DNS1D;
+use Milon\Barcode\DNS2D;
 
 class VehicleDetails extends Model
 {
@@ -52,7 +53,7 @@ class VehicleDetails extends Model
         if (!$sample->uid) {
             $total = self::withTrashed()->count();
             $uid = $total + 1;
-            $sample->uid = "SP" . sprintf('%03d', $uid);
+            $sample->uid = "SP" . sprintf('%03d', $uid) ."-B". $sample->branch_id;
         }
 
         if (!$sample->barcode) {

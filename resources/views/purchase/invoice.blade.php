@@ -93,7 +93,7 @@
         </div>
         <div class="right">
             <p>Supplier: {{ $first->supplier?->name ?? 'Walking Supplier' }}</p>
-            <p>Supplier Mob: {{ $first->supplier?->phone ?? 0 }}</p>
+            <p>Supplier Mob: {{ $first->supplier?->phone ?? '' }}</p>
         </div>
     </div>
 

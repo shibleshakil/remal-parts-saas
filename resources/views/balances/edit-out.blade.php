@@ -6,9 +6,11 @@
         <div class="content-header row">
             <div class="content-header-left col-md-6 col-12 mb-1">
                 <h3 class="content-header-title">
+                    @can('balances.index')
                     <a href="{{ route('balances.index') }}" class="btn btn-primary">
                         {{ __('Balance List') }} <i class="feather icon-eye"></i>
                     </a>
+                    @endcan
                 </h3>
             </div>
             <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -84,7 +86,7 @@
                 }
             });
         });
-        
+
         $('#payment_method').on('change', function() {
             if ($(this).val() === 'bank_transfer') {
                 $('#bank_list_wrapper').show(); // Show bank list

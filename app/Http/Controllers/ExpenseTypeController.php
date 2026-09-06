@@ -38,14 +38,13 @@ class ExpenseTypeController extends Controller
     }
 
 
-
     public function create(){
         return view('expenseType.create');
     }
 
 
     public function store(Request $request){
-        $validated = $request->validate([
+        $request->validate([
             'name' => ['required', 'unique:expense_types,name,','max:255'],
         ]);
 
@@ -67,31 +66,15 @@ class ExpenseTypeController extends Controller
         }
 
     }
-    public function edit($id){
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
+    public function edit($id)
+    {
         $data = ExpenseType::findorFail($id);
         return view('expenseType.edit', compact('data' ));
     }
 
-    public function update(Request $request){
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-        $validated = $request->validate([
+    public function update(Request $request)
+    {
+        $request->validate([
             'name' => ['required','max:255'],
         ]);
 
@@ -114,16 +97,8 @@ class ExpenseTypeController extends Controller
 
     }
 
-    public function delete($id){
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
+    public function delete($id)
+    {
         DB::beginTransaction();
         try {
             $data = ExpenseType::find($id);

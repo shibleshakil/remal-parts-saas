@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('quotes.create')
                 <a href="{{ route('quotes.index') }}" class="btn btn-primary">
                     {{ __('Quote list') }} <i class="feather icon-eye"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -111,7 +113,7 @@
                 data.forEach(part => {
                     const availableQty = existingQuantities[part.id] ?? (part.available_quantity ?? 0);
                     carPartsSelect.append(
-                        `<option value="${part.id}" data-available-qty="${availableQty}" data-unit-price="${part.unit_price}">${part.parts_name} - ${part.uid} | ${part.car_name} - ${part.car_model} | ${part.unit_price} | ${availableQty}</option>`
+                        `<option value="${part.id}" data-available-qty="${availableQty}" data-unit-price="${part.unit_price}" data-target-sell-price="${part.target_sell_price ?? 0}">${part.parts_name} - ${part.uid} | ${part.car_name} - ${part.car_model} | ${part.unit_price} | ${availableQty}</option>`
                     );
                 });
                 carPartsSelect.append(`<option value="0" data-available-qty="">Scrap</option>`);
@@ -128,15 +130,16 @@
             const availableQty = parseInt(selected.data('available-qty')) || 0;
             const itemType = $select.attr('id') === 'car_spare_parts' ? 'car_spare_part' : 'spare_part';
             const unitPrice = parseFloat(selected.data('unit-price')) || 0;
+            const targetSellPrice = parseFloat(selected.data('target-sell-price')) || 0;
 
             if (itemId) {
-                if (addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, $('#vehicle').val())) {
+                if (addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, $('#vehicle').val(), targetSellPrice)) {
                     $select.val('').trigger('change');
                 }
             }
         });
 
-        function addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, vehicleId = null) {
+        function addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, vehicleId = null, targetSellPrice = 0) {
             let found = false;
 
             const parts = itemName.split(' - ');
@@ -195,7 +198,7 @@
                 `<input type="hidden" name="products[${rowIndex}][vehicle_id]" value="${vehicleId}">` : '';
 
             const row = `
-                <tr id="row-${rowIndex}">
+                <tr id="row-${rowIndex}" title="Target Sell Price: ${targetSellPrice.toFixed(2)}">
                     <td>
                         <input type="hidden" name="products[${rowIndex}][item_id]" value="${itemId}" data-item-type="${itemType}">
                         <input type="hidden" name="products[${rowIndex}][item_type]" value="${itemType}">
@@ -315,7 +318,7 @@
                     const item = res.data;
                     const availableQty = existingQuantities[item.id] ?? (item.available_quantity ?? 0);
                     const itemName = `${item.parts_name} - ${item.uid}`;
-                    addItemToTable(item.id, itemName, item.unit_price, availableQty, item.vehicle_id ? 'car_spare_part' : 'spare_part', item.vehicle_id);
+                    addItemToTable(item.id, itemName, item.unit_price, availableQty, item.vehicle_id ? 'car_spare_part' : 'spare_part', item.vehicle_id, item.target_sell_price ?? 0);
                 } else if (res.car_id) {
                     carPartsWrapper.show();
                     ignoreVehicleChange = true;
@@ -327,7 +330,7 @@
                     res.data.forEach(part => {
                         const availableQty = existingQuantities[part.id] ?? (part.available_quantity ?? 0);
                         carPartsSelect.append(
-                            `<option value="${part.id}" data-available-qty="${availableQty}" data-unit-price="${part.unit_price}">${part.parts_name} - ${part.uid} | ${part.car_model} | ${part.unit_price} | ${availableQty}</option>`
+                            `<option value="${part.id}" data-available-qty="${availableQty}" data-unit-price="${part.unit_price}" data-target-sell-price="${part.target_sell_price ?? 0}">${part.parts_name} - ${part.uid} | ${part.car_model} | ${part.unit_price} | ${availableQty}</option>`
                         );
                     });
 
@@ -342,7 +345,7 @@
                     res.data.forEach(part => {
                         const qty = (part.available_quantity ?? 0);
                         $spareParts.append(
-                            `<option value="${part.id}" data-available-qty="${qty}" data-unit-price="${part.unit_price}">${part.parts_name} - ${part.uid}|${qty}</option>`
+                            `<option value="${part.id}" data-available-qty="${qty}" data-unit-price="${part.unit_price}" data-target-sell-price="${part.target_sell_price ?? 0}">${part.parts_name} - ${part.uid}|${qty}</option>`
                         );
                     });
 
@@ -368,6 +371,7 @@
             const quantity = parseInt(item.quantity) || 1;
             const cost = parseFloat(item.cost) || (unitPrice * quantity);
             const vehicleId = parseInt(item.vehicle_id) || item.vehicle_id || null;
+            const targetSellPrice = parseFloat(item.purchase_line?.target_sell_price) || 0;
 
             let availableQty = Infinity;
             if (itemId !== "0") {
@@ -375,7 +379,7 @@
                 availableQty = stockQty + quantity;
             }
 
-            addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, vehicleId);
+            addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, vehicleId, targetSellPrice);
 
             const row = $('#product-rows tr').last();
             row.find('.qty').val(quantity);

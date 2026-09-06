@@ -47,7 +47,7 @@ $url = Route::currentRouteName();
         </div>
 
         <!-- Car Spare Parts -->
-        <div class="form-group">
+       <div class="form-group">
             <label for="car_spare_parts">Car Spare Parts<span class="text-danger">*</span></label>
             <select name="car_spare_parts" id="car_spare_parts" class="form-control select2">
                 <option value="">Select Car Spare Part</option>
@@ -55,7 +55,7 @@ $url = Route::currentRouteName();
             @error('car_spare_parts')
             <small class="text-danger">{{ $message }}</small>
             @enderror
-        </div>
+       </div>
     </div>
 
     <div class="col-md-6">
@@ -125,12 +125,14 @@ $url = Route::currentRouteName();
                 </option>
                 @endforeach
             </select>
+            @can('customer.create')
             <div class="input-group-append">
                 <button class="btn btn-primary" type="button" title="Add New Customer" data-toggle="modal"
                     data-target="#inlineForm">
                     <i class="feather icon-plus"></i>
                 </button>
             </div>
+            @endcan
         </div>
         @error('customer')
         <small class="text-danger">{{ $message }}</small>
@@ -272,7 +274,6 @@ $url = Route::currentRouteName();
     </div>
 
 
-
     <div class="col-md-3 form-group">
         <label> Due Amount</label>
         <input type="number" class="form-control text-info" id="dueAmount" name="dueAmount" value="{{$url === 'sales.edit' ? $sale->final_amount - $sale->paid_amount : 0 }}" readonly>
@@ -309,12 +310,14 @@ $url = Route::currentRouteName();
                     <option value="{{$bank->id}}" {{$url == 'sales.edit' && $sale->bank_id == $bank->id ? 'selected' : '' }}>Name: {{ $bank->bank_name }} - Account Name: {{ $bank->account_name }} - Account No: {{ $bank->account_no }}</option>
                     @endforeach
                 </select>
+                @can('banks.create')
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="button" title="Add New Customer" data-toggle="modal"
                         data-target="#inlineBankForm">
                         <i class="feather icon-plus"></i>
                     </button>
                 </div>
+                @endcan
             </div>
         </div>
     </div>

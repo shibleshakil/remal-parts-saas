@@ -19,7 +19,19 @@ class VehicleController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Vehicle::with(['sales', 'details.saleDetails', 'details.purchaseLines']);
+
+        $branchId = active_branch_id();
+
+        $query = Vehicle::with([
+            'sales',
+            'details.saleDetails',
+            'details.purchaseLines' => function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            }
+        ])
+        ->whereHas('details.purchaseLines', function ($q) use ($branchId) {
+            $q->where('branch_id', $branchId);
+        });
 
         // সার্চ অপশন
         if ($request->filled('search')) {
@@ -93,7 +105,12 @@ class VehicleController extends Controller
 
     public function store(Request $request)
     {
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
+
 
         if ($request->paid_amount > $balance->balance) {
             if ($request->ajax()) {
@@ -127,18 +144,20 @@ class VehicleController extends Controller
             'supplier_id' => 'nullable|exists:suppliers,id',
             'bank_id'  => 'nullable|exists:banks,id',
             'paid_amount' => 'nullable',
-            'payment_method' => ['nullable','required_with:paid_amount', 'string', Rule::in(['cash', 'bank_transfer', 'cheque','due'])],
+            'payment_method' => ['nullable', 'required_with:paid_amount', 'string', Rule::in(['cash', 'bank_transfer', 'cheque', 'due'])],
         ]);
 
         try {
             DB::beginTransaction();
+
 
             $year = date('Y');
             $count = PurchaseLines::withTrashed()
                 ->whereYear('purchase_date', $year)
                 ->count() + 1;
 
-            $invoiceNo = 'VP' . $year . $count;
+            $invoiceNo = 'VP' . $year . $count . '-BR' . active_branch_id();
+
 
             $vehicle = Vehicle::create([
                 'name' => $validatedData['name'],
@@ -153,7 +172,6 @@ class VehicleController extends Controller
                 'supplier_id' => $validatedData['supplier_id'],
                 'invoice_no' => $invoiceNo
             ]);
-
 
             $balance->decrement('balance', $validatedData['paid_amount'] ?? 0 );
             $balance->refresh();
@@ -173,6 +191,7 @@ class VehicleController extends Controller
                 'bank_id'  => $validatedData['bank_id'],
                 'current_balance' => $balance->balance,
                 'purchase_invoice_no' => $invoiceNo,
+                'branch_id' => active_branch_id(),
             ]);
 
             $vehicle->update([
@@ -192,6 +211,7 @@ class VehicleController extends Controller
                     'total_parts_price' => 0,
                     'date' => $validatedData['purchase_date'][$index] ?? $validatedData['date'],
                     'note' => $validatedData['note'] ?? null,
+                    'branch_id' => active_branch_id(),
                 ]);
 
                 PurchaseLines::create([
@@ -202,6 +222,7 @@ class VehicleController extends Controller
                     'purchase_date' => $validatedData['purchase_date'][$index] ?? $validatedData['date'],
                     'supplier_id' => $validatedData['supplier_id'],
                     'invoice_no' => $invoiceNo,
+                    'branch_id' => active_branch_id(),
                     'transaction_id' => $transaction->id,
                 ]);
             }
@@ -226,17 +247,7 @@ class VehicleController extends Controller
 
     public function edit($id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $vehicle = Vehicle::with('details', 'purchaseTransaction')->findOrFail($id);
-
         $vehicles = Vehicle::pluck('name')->unique();
         $parts = VehicleDetails::pluck('parts_name')->unique();
         $suppliers = Supplier::select('id', 'name')->get();
@@ -247,17 +258,12 @@ class VehicleController extends Controller
 
     public function update(Request $request, $id)
     {
-
-        if (!(\App\Helpers\CommonHelper::userHasAccess())) {
-            if (request()->ajax()) {
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $vehicle = Vehicle::findOrFail($id);
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         if (($request->paid_amount - $vehicle->purchaseTransaction->paid_amount) > $balance->balance) {
             if ($request->ajax()) {
@@ -355,6 +361,7 @@ class VehicleController extends Controller
                     'total_parts_price' => $validatedData['quantity'][$index] * $validatedData['price'][$index],
                     'date' => $validatedData['purchase_date'][$index] ?? $validatedData['date'],
                     'note' => $validatedData['note'] ?? null,
+                    'branch_id' => active_branch_id(),
                 ]);
 
                 PurchaseLines::create([
@@ -366,13 +373,14 @@ class VehicleController extends Controller
                     'supplier_id' => $validatedData['supplier_id'],
                     'invoice_no' => $vehicle->invoice_no,
                     'transaction_id' => $vehicle->transaction_id,
+                    'branch_id' => active_branch_id(),
                 ]);
-
             }
+
 
             DB::commit();
 
-            // ✅ Return JSON for AJAX, redirect for normal
+            // Return JSON for AJAX, redirect for normal
             if ($request->ajax()) {
                 return response()->json([
                     'status' => 'success',
@@ -394,15 +402,11 @@ class VehicleController extends Controller
 
     public function delete($id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         $selledVehicle = SaleDetails::where('vehicle_id', $id)->get();
 

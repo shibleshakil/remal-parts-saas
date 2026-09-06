@@ -65,19 +65,26 @@ function deleteData(url) {
                     });
                 },
                 error: function (xhr) {
-                    if (xhr.status === 403) {
+                    if(xhr.status === 400) {
+                        console.log(xhr.responseJSON.message);
+
+                        Swal.fire({
+                            title: "Error",
+                            text: xhr.responseJSON && xhr.responseJSON.message
+                                ? xhr.responseJSON.message
+                                : "Cannot delete branch with associated stock movements.",
+                        });
+                    } else if (xhr.status === 403) {
                         Swal.fire({
                             title: "Access Denied",
                             text: xhr.responseJSON && xhr.responseJSON.message
                                 ? xhr.responseJSON.message
                                 : "Sorry, you’re not authorized to perform this action.",
-                            icon: "error"
                         });
                     } else {
                         Swal.fire({
                             title: "Error",
                             text: "Something went wrong. Please try again later.",
-                            icon: "error"
                         });
                     }
                 }
@@ -107,7 +114,6 @@ function restoreData(url) {
         cancelButtonClass: "btn btn-danger ml-1",
         buttonsStyling: false,
     }).then(function (result) {
-        console.log("HII");
         if (result.value) {
             $.ajax({
                 url: url,

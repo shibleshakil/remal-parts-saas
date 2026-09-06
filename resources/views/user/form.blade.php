@@ -38,11 +38,27 @@
 
     <!-- Role Dropdown -->
     <div class="col-md-6 form-group">
-        <label for="role">Role <span class="text-danger">*</span></label>
-        <select class="form-control" name="role" id="role" required>
+        <label for="role_id">Role <span class="text-danger">*</span></label>
+        <select class="form-control" name="role_id" id="role_id" required>
             <option value="">Select Role</option>
-            <option value="admin" {{ (isset($user) && $user->role == 'admin') ? 'selected' : '' }}>Admin</option>
-            <option value="employee" {{ (isset($user) && $user->role == 'employee') ? 'selected' : '' }}>Employee</option>
+            @foreach($roles as $id => $role)
+                <option value="{{ $id }}" {{ (isset($user) && $user->roles->pluck('id')->contains($id)) ? 'selected' : '' }}>
+                    {{ $role }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <!-- Branch Dropdown -->
+    <div class="col-md-6 form-group">
+        <label for="branch_id">Branch <span class="text-danger">*</span></label>
+        <select class="form-control" name="branch_id" id="branch_id" required>
+            <option value="">Select Branch</option>
+            @foreach($branches as $id => $branch)
+                <option value="{{ $id }}" {{ (isset($user) && $user->branch->pluck('id')->contains($id)) ? 'selected' : '' }}>
+                    {{ $branch }}
+                </option>
+            @endforeach
         </select>
     </div>
 </div>

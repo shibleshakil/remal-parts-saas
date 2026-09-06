@@ -13,12 +13,12 @@ use App\Models\Transaction;
 use App\Models\Vehicle;
 use App\Models\VehicleDetails;
 use Illuminate\Http\Request;
+use NumberToWords\NumberToWords;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use NumberToWords\NumberToWords;
 
 class PurchaseController extends Controller
 {
@@ -78,7 +78,11 @@ class PurchaseController extends Controller
 
     public function store(Request $request)
     {
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         if ($request->paid_amount > $balance->balance) {
             if ($request->ajax()) {
@@ -107,7 +111,7 @@ class PurchaseController extends Controller
             // Totals and payments
             'total_cost'           => 'required|numeric|min:0',
             'final_amount'         => 'required|numeric|min:0',
-            'paid_amount'          => 'nullable|numeric|min:0',
+            'paid_amount'          => 'nullable|numeric|min:0|lte:final_amount',
             'payment_method'       => ['nullable','required_with:paid_amount','string', Rule::in(['cash', 'bank_transfer', 'cheque', 'due'])],
             'bank_id'              => 'nullable|exists:banks,id',
 
@@ -124,8 +128,10 @@ class PurchaseController extends Controller
                 $attachmentName = ImageHelper::handleUploadMultipleFile($request->file('attachment'), '/storage/purchase/');
             }
 
-            $balance->decrement('balance', $validated['paid_amount']?? 0);
+            $balance->decrement('balance', $validated['paid_amount'] ?? 0);
             $balance->refresh();
+
+            $bulkInvoiceNo = '';
 
             if ($validated['products']) {
                 $year = date('Y');
@@ -134,7 +140,7 @@ class PurchaseController extends Controller
                     ->where('bulk_purchase', true)
                     ->count() + 1;
 
-                $bulkInvoiceNo = 'BP' . $year . $count;
+                $bulkInvoiceNo = 'BP' . $year . $count . '-B' . active_branch_id();
             }
 
             $transaction = Transaction::create([
@@ -147,10 +153,11 @@ class PurchaseController extends Controller
                 'payment_method'   => $validated['payment_method'],
                 'bank_id'          => $validated['bank_id'] ?? null,
                 'paid_amount'      => $validated['paid_amount'],
-                'status'           => $validated['final_amount'] > $validated['paid_amount'] ? 'partially_paid' : 'paid',
+                'status'           => $validated['paid_amount'] == 0 ? 'unpaid' : ($validated['paid_amount'] < $validated['final_amount'] ? 'partially_paid' : 'paid'),
                 'note'             => $validated['note'] ?? null,
                 'current_balance'  => $balance->balance,
                 'purchase_invoice_no' => $bulkInvoiceNo,
+                'branch_id'         => active_branch_id(),
             ]);
 
             foreach ($validated['products'] as $index => $item) {
@@ -166,8 +173,10 @@ class PurchaseController extends Controller
                     'bulk_purchase'     => true,
                     'invoice_no'        => $bulkInvoiceNo,
                     'attachment'        => $attachmentName,
+                    'branch_id'         => active_branch_id(),
                 ]);
             }
+
 
             DB::commit();
 
@@ -231,6 +240,7 @@ class PurchaseController extends Controller
         return view('purchase.invoice', ['invoice' => $data]);
     }
 
+
     public function showPayDueForm($id)
     {
         $purchase = PurchaseLines::where('id', $id)->with('transactions', 'supplier')->first();
@@ -240,7 +250,11 @@ class PurchaseController extends Controller
 
     public function payDue(Request $request, $id)
     {
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         if ($request->paid_amount > $balance->balance) {
             if ($request->ajax()) {
@@ -257,7 +271,7 @@ class PurchaseController extends Controller
 
         $validator = Validator::make($request->all(), [
             'payment_amount' => ['required', 'numeric', 'min:0'],
-            'payment_method' => ['required', Rule::in(['cash', 'bank_transfer', 'cheque','due'])],
+            'payment_method' => ['required', Rule::in(['cash', 'bank_transfer', 'cheque', 'due'])],
             'payment_date' => ['required', 'date'],
         ]);
 
@@ -301,6 +315,7 @@ class PurchaseController extends Controller
                 'note'               => $validator->validated()['payment_note'] ?? null,
                 'created_by'         => auth()->id(),
                 'purchase_invoice_no'=> $transactions[0]->purchase_invoice_no ?? null,
+                'branch_id'          => active_branch_id(),
             ]);
 
             $balance->decrement('balance', $validator->validated()['payment_amount']);
@@ -309,17 +324,17 @@ class PurchaseController extends Controller
             DB::commit();
 
             if (request()->ajax()) {
-                    $numberToWords = new NumberToWords();
-                    // Create number transformer for Arabic
-                    $numberTransformer = $numberToWords->getNumberTransformer('ar');
+                $numberToWords = new NumberToWords();
+                // Create number transformer for Arabic
+                $numberTransformer = $numberToWords->getNumberTransformer('ar');
 
-                    // Generate the words using each item's paid_amount
-                    $amountInWords = $numberTransformer->toWords($newTransaction->paid_amount);
-                    $transactions[0] = $newTransaction;
+                // Generate the words using each item's paid_amount
+                $amountInWords = $numberTransformer->toWords($newTransaction->paid_amount);
+                $transactions[0] = $newTransaction;
 
-                    $transactions = collect($transactions);
+                $transactions = collect($transactions);
 
-                    $htmlView = view('supplier.pay-slip', compact('transactions','amountInWords'))->render();
+                $htmlView = view('supplier.pay-slip', compact('transactions','amountInWords'))->render();
 
                 return response()->json([
                     'status' => 'success',

@@ -1,11 +1,10 @@
 @php
-    $balance = App\Models\Balance::first();
-    if ($balance == null) {
-        $balance = new App\Models\Balance();
-        $balance->balance = 0;
-        $balance->save();
-    }
-
+    use App\Models\Balance;
+    $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 @endphp
 
 <nav class="header-navbar navbar-expand-md navbar navbar-with-menu fixed-top navbar-semi-dark navbar-shadow">
@@ -18,13 +17,15 @@
                     <a class="navbar-brand d-flex align-items-center" href="{{ route('home') }}">
                         <img src="{{ asset('public/app-assets/images/logo/remalalwafi.png') }}" alt="logo"
                             style="height:25px; width:auto;">
-                        <h4 class="brand-text m-0">{{env('APP_NAME') ?? 'REMAL AL WAFI'}}</h4>
+                        <h4 class="brand-text m-0">REMAL AL WAFI</h4>
                     </a>
                 </li>
                 <li class="nav-item d-md-none"><a class="nav-link open-navbar-container" data-toggle="collapse"
                         data-target="#navbar-mobile"><i class="fa fa-ellipsis-v"></i></a></li>
             </ul>
         </div>
+
+
         <div class="navbar-container content">
             <div class="collapse navbar-collapse" id="navbar-mobile">
                 <ul class="nav navbar-nav mr-auto float-left">
@@ -38,6 +39,21 @@
                             <span class="font-weight-bolder pr-5">Account Balance: <span
                                     id="account_balance">{{ number_format($balance->balance, 2) }}</span></span>
                         </li>
+                        @if(isSuperAdmin())
+                        <li class="form-group mb-0 d-flex align-items-center justify-content-center">
+                            <form method="POST" action="{{ route('branch.switch') }}">
+                                @csrf
+                                <select class="form-control" name="branch_id" onchange="this.form.submit()">
+                                    @foreach(branches() as $branch)
+                                        <option value="{{ $branch->id }}"
+                                            {{ session('active_branch_id', auth()->user()->branch_id) == $branch->id ? 'selected' : '' }}>
+                                            {{ $branch->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        </li>
+                        @endif
                         <li class="dropdown dropdown-user nav-item"><a class="dropdown-toggle nav-link dropdown-user-link"
                                 href="#" data-toggle="dropdown">
                                 <div class="avatar avatar-online"><img

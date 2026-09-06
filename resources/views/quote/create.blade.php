@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('quotes.create')
                 <a href="{{ route('quotes.index') }}" class="btn btn-primary">
-                    {{ __('Quote List') }} <i class="feather icon-eye"></i>
+                    {{ __('Quote list') }} <i class="feather icon-eye"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -121,7 +123,7 @@
                 data.forEach(part => {
                     const qty = existingQuantities[part.id] ?? (part.available_quantity ?? 0);
                     $carParts.append(
-                        `<option value="${part.id}" data-available-qty="${qty}" data-unit-price="${part.unit_price}">${part.parts_name} - ${part.uid} | ${part.car_name} - ${part.car_model} | ${part.unit_price} | ${qty}</option>`
+                        `<option value="${part.id}" data-available-qty="${qty}" data-unit-price="${part.unit_price}" data-target-sell-price="${part.target_sell_price ?? 0}">${part.parts_name} - ${part.uid} | ${part.car_name} - ${part.car_model} | ${part.unit_price} | ${qty}</option>`
                     );
                 });
 
@@ -143,11 +145,12 @@
             const itemName = selected.text();
             const availableQty = parseInt(selected.data('available-qty')) || 0;
             const unitPrice = parseFloat(selected.data('unit-price')) || 0;
+            const targetSellPrice = parseFloat(selected.data('target-sell-price')) || 0;
             const itemType = $select.attr('id') === 'car_spare_parts' ? 'car_spare_part' : 'spare_part';
 
             if (itemId) {
                 if (addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, $vehicle
-                        .val())) {
+                        .val(), targetSellPrice)) {
                     $select.val('').trigger('change');
                 }
             }
@@ -162,16 +165,17 @@
             const itemName = selected.text();
             const availableQty = parseInt(selected.data('available-qty')) || 0;
             const unitPrice = parseFloat(selected.data('unit-price')) || 0;
+            const targetSellPrice = parseFloat(selected.data('target-sell-price')) || 0;
             const itemType = $select.attr('id') === 'car_spare_parts' ? 'car_spare_part' : 'spare_part';
 
             if (itemId) {
-                if (addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, $spareParts.val())) {
+                if (addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, $spareParts.val(), targetSellPrice)) {
                     $select.val('').trigger('change');
                 }
             }
         });
 
-        function addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, vehicleId = null) {
+        function addItemToTable(itemId, itemName, unitPrice, availableQty, itemType, vehicleId = null, targetSellPrice = 0) {
 
 
             let found = false;
@@ -229,7 +233,7 @@
                 '';
 
             const row = `
-                <tr id="row-${rowIndex}">
+                <tr id="row-${rowIndex}" title="Target Sell Price: ${targetSellPrice.toFixed(2)}">
                     <td>
                         <input type="hidden" name="products[${rowIndex}][item_id]" value="${itemId}" data-item-type="${itemType}">
                         <input type="hidden" name="products[${rowIndex}][item_type]" value="${itemType}">
@@ -335,7 +339,7 @@
                     const item = res.data;
                     const qty = (item.available_quantity ?? 0);
                     const itemName = `${item.parts_name} - ${item.uid}`;
-                    addItemToTable(item.id, itemName, item.unit_price, qty, item.vehicle_id ? 'car_spare_part' : 'spare_part', item.vehicle_id);
+                    addItemToTable(item.id, itemName, item.unit_price, qty, item.vehicle_id ? 'car_spare_part' : 'spare_part', item.vehicle_id, item.target_sell_price ?? 0);
                 } else if (res.car_id) {
                     ignoreVehicleChange = true;
                     $vehicle.val(res.car_id).trigger('change');
@@ -347,7 +351,7 @@
                     res.data?.forEach(part => {
                         const qty = (part.available_quantity ?? 0);
                         $carParts.append(
-                            `<option value="${part.id}" data-available-qty="${qty}">${part.parts_name} - ${part.uid} | ${part.car_name} | ${part.unit_price} | ${qty}</option>`
+                            `<option value="${part.id}" data-available-qty="${qty}" data-target-sell-price="${part.target_sell_price ?? 0}">${part.parts_name} - ${part.uid} | ${part.car_name} | ${part.unit_price} | ${qty}</option>`
                         );
                     });
 
@@ -367,7 +371,7 @@
                     res.data.forEach(part => {
                         const qty = (part.available_quantity ?? 0);
                         $spareParts.append(
-                            `<option value="${part.id}" data-available-qty="${qty}" data-unit-price="${part.unit_price}">${part.parts_name} - ${part.uid}|${qty}</option>`
+                            `<option value="${part.id}" data-available-qty="${qty}" data-unit-price="${part.unit_price}" data-target-sell-price="${part.target_sell_price ?? 0}">${part.parts_name} - ${part.uid}|${qty}</option>`
                         );
                     });
 

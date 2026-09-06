@@ -6,9 +6,7 @@
     <div class="col-md-6 form-group">
         <label for="bank_name">Bank Name <span class="text-danger">*</span></label>
         <input type="text" class="form-control" name="bank_name" id="bank_name" step="any" min="0" required
-        value="{{ isset($bank) ? $bank->bank_name : old('bank_name') }}"
-        >
-
+        value="{{ isset($bank) ? $bank->bank_name : old('bank_name') }}">
     </div>
     <div class="col-md-6 form-group">
         <label for="account_name">Account Name <span class="text-danger">*</span></label>
@@ -24,9 +22,4 @@
         <label for="branch">Branch <span class="text-danger">*</span></label>
         <input type="text" class="form-control" name="branch" id="branch" step="any" min="0" required value="{{ isset($bank) ? $bank->branch : old('branch') }}">
     </div>
-
-
-
-
-
 </div>

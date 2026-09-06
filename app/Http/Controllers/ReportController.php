@@ -90,14 +90,6 @@ class ReportController extends Controller
 
     public function grossProfit(Request $request)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         // Set the date range into session
         $this->setDateRange($request, 'gross_profit');
 

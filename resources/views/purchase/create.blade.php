@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('purchase.index')
                 <a href="{{ route('purchase.index') }}" class="btn btn-primary">
                     {{ __('Purchase List') }} <i class="feather icon-eye"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -21,7 +23,6 @@
             </div>
         </div>
     </div>
-
 
     <div class="content-body">
         <!-- basic form table -->
@@ -87,6 +88,8 @@
         const $spareParts = $('#spare_parts');
         const $parts = $('#parts');
         const $barcode = $('#iconLeft1');
+        const $carPartsWrapper = $carParts.closest('.form-group').hide();
+        const $sparePartsWrapper = $spareParts.closest('.form-group').hide();
         const select2Parent = $('.content-wrapper');
 
         // Initialize Select2
@@ -243,6 +246,7 @@
             $('#total_cost_text').text(total.toFixed(2));
             $('#total_cost').val(total.toFixed(2));
             calculateFinalAmount();
+            calculateDue();
         }
 
         function calculateFinalAmount() {
@@ -252,6 +256,27 @@
             const finalAmount = type === 'percentage' ? total - (total * discount / 100) : total - discount;
             $('#final_amount_text').text(finalAmount.toFixed(2));
             $('#final_amount').val(finalAmount.toFixed(2));
+            calculateDue();
+        }
+
+        function calculateDue() {
+            const total = parseFloat($('#final_amount').val()) || 0;
+            const paid = parseFloat($('#paid_amount').val()) || 0;
+            const due = total - paid;
+            $('#dueAmount').val(due >= 0 ? due.toFixed(2) : 0);
+            validatePaidAmount(paid, total);
+        }
+
+        function validatePaidAmount(paid, total) {
+            const errorEl = document.getElementById('paidError');
+            const input = document.getElementById('paid_amount');
+            if (paid > total) {
+                errorEl.style.display = 'block';
+                input.classList.add('is-invalid');
+            } else {
+                errorEl.style.display = 'none';
+                input.classList.remove('is-invalid');
+            }
         }
 
         $('#discount_amount, #discount_type').on('input change', function() {
@@ -438,6 +463,7 @@
         });
 
 
+        // Show/hide bank list based on payment method
         $('#payment_method').on('change', function() {
             if ($(this).val() === 'bank_transfer') {
                 $('#bank_list_wrapper').show(); // Show bank list
@@ -447,15 +473,9 @@
             }
         });
 
-        $(document).on('input', '#paid_amount', function () {
-            let total_parts_price = parseFloat($('#final_amount').val()) || 0;
-            let paid_amount = parseFloat($('#paid_amount').val()) || 0;
 
-            if(total_parts_price > 0 && paid_amount > 0){
-                $('#dueAmount').val(total_parts_price - paid_amount);
-            } else {
-                $('#dueAmount').val(total_parts_price); // optional: reset to total if paid = 0
-            }
+        $(document).on('input', '#paid_amount', function () {
+            calculateDue();
         });
 
         $(function() {
@@ -480,6 +500,21 @@
                         });
                         return false;
                     }
+                }
+
+                const total = parseFloat($('#final_amount').val()) || 0;
+                const paid = parseFloat($('#paid_amount').val()) || 0;
+                if (paid > total) {
+                    e.preventDefault();
+                    validatePaidAmount(paid, total);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Paid Amount',
+                        text: 'Paid amount cannot be greater than the total purchase amount!'
+                    });
+                    submitBtn.removeAttr('disabled');
+                    submitBtn.find('.spinner-border').remove();
+                    return false;
                 }
 
                 e.preventDefault();

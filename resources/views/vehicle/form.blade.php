@@ -81,12 +81,15 @@ $url = \Route::currentRouteName();
                     </option>
                     @endforeach
                 </select>
+
+                @can('supplier.create')
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="button" title="Add New Supplier" data-toggle="modal"
                         data-target="#inlineSupplierForm">
                         <i class="feather icon-plus"></i>
                     </button>
                 </div>
+                @endcan
             </div>
         </div>
     </div>
@@ -227,12 +230,15 @@ $url = \Route::currentRouteName();
                     <option value="{{$bank->id}}" {{$url == 'vehicle.edit' && $vehicle?->purchaseTransaction?->bank_id == $bank->id ? 'selected' : '' }}>Name: {{ $bank->bank_name }} - Account Name: {{ $bank->account_name }} - Account No: {{ $bank->account_no }}</option>
                     @endforeach
                 </select>
+
+                @can('banks.create')
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="button" title="Add New Customer" data-toggle="modal"
                         data-target="#inlineBankForm">
                         <i class="feather icon-plus"></i>
                     </button>
                 </div>
+                @endcan
             </div>
         </div>
     </div>

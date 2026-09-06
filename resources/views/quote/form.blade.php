@@ -46,6 +46,7 @@ $url = Route::currentRouteName();
             <option value="">Select a Spare Part</option>
             @foreach ($parts as $part)
             <option value="{{ $part->id }}" data-unit-price="{{ $part->unit_price }}"
+                data-target-sell-price="{{ $part->target_sell_price }}"
                 data-available-qty="{{ $part->available_quantity }}"
                 {{ old('parts') == $part->id ? 'selected' : '' }}>
                 {{ $part->parts_name }} - {{ $part->uid }}| {{ $part->car_name }} {{ $part->car_model }} |
@@ -105,12 +106,14 @@ $url = Route::currentRouteName();
                 </option>
                 @endforeach
             </select>
+            @can('customer.create')
             <div class="input-group-append">
                 <button class="btn btn-primary" type="button" title="Add New Customer" data-toggle="modal"
                     data-target="#inlineForm">
                     <i class="feather icon-plus"></i>
                 </button>
             </div>
+            @endcan
         </div>
         @error('customer')
         <small class="text-danger">{{ $message }}</small>

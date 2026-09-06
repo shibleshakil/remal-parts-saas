@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('expense-type.create')
                 <a href="{{ route ('expense-type.create')}}" class="btn btn-primary">
                     {{ __('Add Expense Type') }} <i class="feather icon-plus"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -74,18 +76,18 @@
                                                         <td>{{ ++$sl }}</td>
                                                         <td>{{ $data->name}}</td>
                                                         <td>
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @can('expense-type.edit')
                                                             <a href="{{ route ('expense-type.edit', [$data->id]) }}"
                                                                 class="btn btn-sm btn-primary" >
                                                                 <i class="feather icon-edit-2"></i>
                                                             </a>
-                                                            @endif
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @endcan
+                                                            @can('expense-type.delete')
                                                             <button type="button" class="btn btn-sm btn-danger" title="Trash"
                                                                 onclick="deleteData('{{ route('expense-type.delete', [$data->id]) }}')">
                                                                 <i class="feather icon-trash"></i>
                                                             </button>
-                                                            @endif
+                                                            @endcan
                                                         </td>
                                                     </tr>
                                                 @endforeach

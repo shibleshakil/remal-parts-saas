@@ -6,9 +6,11 @@
         <div class="content-header row">
             <div class="content-header-left col-md-6 col-12 mb-1">
                 <h3 class="content-header-title">
+                    @can('customer.create')
                     <a href="{{ route('customer.create') }}" class="btn btn-primary">
                         {{ __('Add Customer') }} <i class="feather icon-plus"></i>
                     </a>
+                    @endcan
                 </h3>
             </div>
             <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -84,33 +86,45 @@
                                                                         Action
                                                                     </button>
                                                                     <div class="dropdown-menu arrow">
-                                                                        {{-- Edit Customer --}}
-                                                                        @if ( \App\Helpers\CommonHelper::userHasAccess() )
-                                                                        <a href="{{ route('customer.edit', [$data->id]) }}"
-                                                                            class="dropdown-item" title="Edit Customer">
-                                                                            <i class="feather icon-edit-2"></i> Edit Customer
-                                                                        </a>
-                                                                        @endif
-                                                                        {{-- Pay Due (Optional, links to payment page if any sale has dues) --}}
-                                                                        @if ($data->total_due > 0)
-                                                                            <a href="{{ route('customer.pay', [$data->sales->first()?->id ?? 0]) }}"
-                                                                                class="dropdown-item" title="Pay Due">
-                                                                                <i class="feather icon-dollar-sign"></i> Pay Due
+                                                                            {{-- Edit Customer --}}
+                                                                            @can('customer.edit')
+                                                                            <a href="{{ route('customer.edit', [$data->id]) }}"
+                                                                                class="dropdown-item" title="Edit Customer">
+                                                                                <i class="feather icon-edit-2"></i>Edit Customer
                                                                             </a>
-                                                                        @endif
+                                                                            @endcan
 
 
-                                                                        {{-- Delete Customer --}}
-                                                                        @if ( \App\Helpers\CommonHelper::userHasAccess() )
-                                                                        <button type="button" class="dropdown-item" title="Delete"
-                                                                            onclick="deleteData('{{ route('customer.delete', [$data->id]) }}')">
-                                                                            <i class="feather icon-trash"></i> Delete
-                                                                        </button>
-                                                                        @endif
-                                                                        <a href="{{ route('customer.transactions', $data->id) }}"
-                                                                            class="dropdown-item" title="Transaction">
-                                                                            <i class="feather icon-list"></i> Transaction
-                                                                        </a>
+                                                                            {{-- Pay Due (Optional, links to payment page if any sale has dues) --}}
+                                                                            @can('customer.pay')
+                                                                                @if ($data->total_due > 0)
+                                                                                <a href="{{ route('customer.pay', [$data->sales->first()?->id ?? 0]) }}"
+                                                                                    class="dropdown-item" title="Pay Due">
+                                                                                    <i class="feather icon-dollar-sign"></i>Pay Due
+                                                                                </a>
+                                                                                @endif
+                                                                            @endcan
+
+                                                                            {{-- Direct Pay --}}
+                                                                            {{-- <a href="{{ route('customer.directPayForm', [$data->id]) }}"
+                                                                                class="btn btn-success" title="Direct Pay">
+                                                                                <i class="feather icon-credit-card"></i>
+                                                                            </a> --}}
+
+                                                                            {{-- Delete Customer --}}
+                                                                            @can('customer.delete')
+                                                                            <button type="button" class="dropdown-item" title="Delete"
+                                                                                onclick="deleteData('{{ route('customer.delete', [$data->id]) }}')">
+                                                                                <i class="feather icon-trash"></i>Delete
+                                                                            </button>
+                                                                            @endcan
+
+                                                                            @can('customer.transactions')
+                                                                            <a href="{{ route('customer.transactions', $data->id) }}"
+                                                                                class="dropdown-item" title="Transaction">
+                                                                                <i class="feather icon-list"></i>Transaction
+                                                                            </a>
+                                                                            @endcan
                                                                     </div>
                                                                 </div>
                                                             </td>

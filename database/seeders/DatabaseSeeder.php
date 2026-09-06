@@ -19,9 +19,11 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
-        $this->call(
-            UserSeeder::class,
-            // CountrySeeder::class
-        );
+        $this->call([
+            // run branch, than userRolePermission
+            // CountrySeeder::class,
+            // BranchSeeder::class,
+            UserRolePermissionSeeder::class,
+        ]);
     }
 }

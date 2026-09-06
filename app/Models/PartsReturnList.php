@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\BranchScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,7 +17,13 @@ class PartsReturnList extends Model
         'item_name',
         'unit_price',
         'refund_amount',
+        'branch_id',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new BranchScope);
+    }
 
     // Relationships can be defined here if needed
     public function vehicleDetail()

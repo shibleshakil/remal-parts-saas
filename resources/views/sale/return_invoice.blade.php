@@ -518,19 +518,13 @@
                     </tr>
                 @endforeach
                 <tr>
-                   @php
+                  @php
                         $final_amount = $totalReturnAmount;
                         // Split amount into integer and decimal parts
                         [$final_integerPart, $final_decimalPart] = explode('.', number_format($final_amount, 2));
 
-
-                        // if($sale->vat_type == 'inclusive') {
-                        //     $vat_amount = $final_amount - ($final_amount / (1 + $sale->vat));
-                        //     $final_amount_with_vat = $final_amount;
-                        // } else {
-                            $vat_amount = $final_amount * $sale->vat;
-                            $final_amount_with_vat = $final_amount + $vat_amount;
-                        // }
+                        $vat_amount = $final_amount * $sale->vat;
+                        $final_amount_with_vat = $final_amount + $vat_amount;
 
 
                         // Split amount into integer and decimal
@@ -622,13 +616,8 @@
                         [$final_ex_integer_part_without_vat, $final_ex_decimal_part_without_vat] = explode('.', number_format($final_exchange_amount_without_vat, 2));
 
 
-                        // if($sale->vat_type == 'inclusive') {
-                        //     $vat_amount = $final_exchange_amount_without_vat - ($final_exchange_amount_without_vat / (1 + $sale->vat));
-                        //     $totalExchangeAmountWithVat = $final_exchange_amount_without_vat;
-                        // } else {
-                            $vat_amount = $final_exchange_amount_without_vat * $sale->vat;
-                            $totalExchangeAmountWithVat = $final_exchange_amount_without_vat + $vat_amount;
-                        // }
+                        $vat_amount = $final_exchange_amount_without_vat * $sale->vat;
+                        $totalExchangeAmountWithVat = $final_exchange_amount_without_vat + $vat_amount;
 
                         // Split amount into integer and decimal parts
                         [$vat_amount_integer_part, $vat_amount_decimal_part] = explode('.', number_format($vat_amount, 2));

@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('supplier.index')
                 <a href="{{ route ('supplier.index')}}" class="btn btn-primary">
                     {{ __('Supplier List') }} <i class="feather icon-eye"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -92,7 +94,7 @@
                                             </tr>
                                             @foreach($data as $transaction)
                                             @php
-                                                $balance = $balance + $transaction->final_amount - $transaction->paid_amount;
+                                                $balance + $transaction->final_amount - $transaction->paid_amount;
                                             @endphp
                                             <tr>
                                                 <td class="text-nowrap text-center">{{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d M Y')}}</td>

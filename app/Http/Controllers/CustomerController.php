@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Sale;
 use App\Models\Balance;
 use App\Models\Customer;
-use NumberToWords\NumberToWords;
+use App\Models\Sale;
 use App\Models\Transaction;
-use Illuminate\Support\Str;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use NumberToWords\NumberToWords;
 
 class CustomerController extends Controller
 {
@@ -85,6 +85,7 @@ class CustomerController extends Controller
         DB::beginTransaction();
 
         try {
+
             foreach ($validated['invoices'] as $invoiceData) {
                 $sale = Sale::findOrFail($invoiceData['id']);
 
@@ -101,8 +102,12 @@ class CustomerController extends Controller
                 $sale->paid_amount += $invoiceData['payment'];
                 $sale->save();
 
-                $balance = Balance::firstOrCreate([], ['balance' => 0]);
-                $balance->increment('balance', $invoiceData['payment']);
+                $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
+                $balance->increment('balance', $invoiceData['payment'] ?? 0);
                 $balance->refresh();
 
                 // Create transaction
@@ -120,6 +125,7 @@ class CustomerController extends Controller
                             : 'Due payment for Sale #' . $sale->id . ' via ' . $paymentMethod,
                     'created_by' => auth()->user()->id,
                     'current_balance' => $balance->balance,
+                    'branch_id' => active_branch_id(),
                 ]);
 
             }
@@ -150,60 +156,6 @@ class CustomerController extends Controller
         }
     }
 
-    // public function directPayForm(Customer $customer)
-    // {
-    //     $total_due = Sale::where('customer_id', $customer->id)
-    //         ->whereColumn('final_amount', '>', 'paid_amount')
-    //         ->sum(DB::raw('final_amount - paid_amount'));
-    //     return view('customer.direct_pay', compact('customer','total_due'));
-    // }
-
-    // public function directPay(Request $request)
-    // {
-    //     $validated = $request->validate([
-    //         'customer_id' => 'required|exists:customers,id',
-    //         'payment_amount' => 'required|numeric|min:0.01',
-    //         'payment_method' => 'required|string|in:Cash,Bank,Cheque',
-    //         'payment_date' => 'required|date',
-    //         'note' => 'nullable|string|max:255',
-    //     ]);
-
-    //     DB::beginTransaction();
-
-    //     try {
-    //         // Create a direct transaction
-    //         Transaction::create([
-    //             'trxid' => 'PAY-' . Str::uuid()->toString(),
-    //             'type' => 'payment',
-    //             'customer_id' => $validated['customer_id'],
-    //             'sale_id' => null, // Not tied to a specific sale
-    //             'transaction_date' => $validated['payment_date'],
-    //             // 'final_amount' => $validated['payment_amount'],
-    //             'paid_amount'  => $validated['payment_amount'],
-    //             'payment_method'  => $validated['payment_method'],
-    //             'status' => 'completed',
-    //             'note' => $validated['note'] ?? 'Direct payment for Customer #' . $validated['customer_id'] . ' via ' . $validated['payment_method'],
-    //             'created_by' => auth()->user()->id,
-    //         ]);
-
-    //         $balance = Balance::first();
-
-    //         if ($balance == null){
-    //             $balance = new Balance();
-    //             $balance->balance = 0;
-    //             $balance->save();
-    //         }
-
-    //         $balance->increment('balance', $validated['payment_amount']);
-
-    //         DB::commit();
-    //         return redirect()->route('customer.index')->with('success', 'Direct payment recorded successfully!');
-    //     } catch (\Throwable $th) {
-    //         DB::rollback();
-    //         Log::error($th->getMessage());
-    //         return back()->with('error', 'An error occurred while recording the payment.');
-    //     }
-    // }
 
     public function create()
     {
@@ -212,10 +164,10 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'name' => ['required'],
             'phone' => ['required'],
-            'email' => ['nullable'],
+            'email' => ['nullable', 'email'],
             'address' => ['required'],
         ]);
 
@@ -241,14 +193,6 @@ class CustomerController extends Controller
 
     public function edit($id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $data = Customer::findOrFail($id);
         return view('customer.edit', compact('data'));
     }
@@ -256,18 +200,10 @@ class CustomerController extends Controller
     public function update(Request $request)
     {
 
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-        $validated = $request->validate([
+        $request->validate([
             'name' => ['required'],
             'phone' => ['required'],
-            'email' => ['nullable'],
+            'email' => ['nullable', 'email'],
             'address' => ['required'],
         ]);
 
@@ -293,15 +229,6 @@ class CustomerController extends Controller
 
     public function delete($id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-
         DB::beginTransaction();
         try {
             $data = Customer::find($id);

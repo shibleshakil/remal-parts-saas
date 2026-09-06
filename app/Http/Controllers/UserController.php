@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -13,7 +15,13 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::where('is_active', 1)->orderBy('name', 'asc')->get();
+        $users = User::where('is_active', 1)
+                ->where('users.branch_id', active_branch_id())
+                ->join('roles', 'users.role_id', '=', 'roles.id')
+                ->select('users.*', 'roles.name as role_name')
+                ->orderBy('name', 'asc')
+                ->get();
+
         return view('user.index', compact('users'));
     }
 
@@ -22,15 +30,9 @@ class UserController extends Controller
      */
     public function create()
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-        
-        return view('user.create');
+        $roles = Role::pluck('name', 'id');
+        $branches = Branch::pluck('name', 'id');
+        return view('user.create', compact('roles','branches'));
     }
 
     /**
@@ -38,26 +40,21 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $userData = $request->validate([
             'name' => 'required|string',
             'email' => 'required|email',
             'password' => 'required|string',
-            'role' => 'required|in:admin,employee'
+            'role_id' => 'required|exists:roles,id',
+            'branch_id' => 'required|exists:branches,id',
         ]);
 
         if (!empty($request->password)) {
             $userData['password'] = Hash::make($request->password);
         }
 
-        User::create($userData);
+        $user = User::create($userData);
+
+        $user->assignRole(Role::findById($request->role_id));
 
         return redirect()->route('user.index')->with('success' , 'User added succesfully');
     }
@@ -68,17 +65,11 @@ class UserController extends Controller
      */
     public function edit(string $id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $user = User::findOrFail($id);
-        return view('user.edit', compact('user'));
+        $roles = Role::pluck('name', 'id');
+        $branches = Branch::pluck('name', 'id');
+
+        return view('user.edit', compact('user', 'roles', 'branches'));
     }
 
     /**
@@ -87,27 +78,24 @@ class UserController extends Controller
     public function update(Request $request, string $id)
     {
 
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $user = User::findOrFail($id);
 
         $userData = $request->validate([
             'name' => 'required|string',
             'email' => 'required|email',
             'password' => 'nullable|string',
-            'role' => 'required|in:admin,employee'
+            'role_id' => 'required|exists:roles,id',
+            'branch_id' => 'required|exists:branches,id',
         ]);
 
         if (!empty($request->password)) {
             $userData['password'] = Hash::make($request->password);
         }
         $user->update($userData);
+
+        // Sync role
+        $role = Role::findById($request->role_id);
+        $user->syncRoles([$role]);
 
         return redirect()->route('user.index')->with('success' , 'User updated succesfully');
     }
@@ -117,14 +105,6 @@ class UserController extends Controller
      */
     public function delete(string $id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
 
         $user = User::findOrFail($id);
         $user->update(['is_active'=> 0]);

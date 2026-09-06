@@ -450,7 +450,7 @@
 
         <div class="details-row">
             <div>
-                <div class="field">
+                 <div class="field">
                     <span class="label">Supplier: </span>
                     <span class="value border-0"></span>
                 </div>
@@ -481,61 +481,61 @@
     <div class="table-body-container">
         <table class="item-table">
             <thead>
-            <tr>
-                <th rowspan="2" class="col-sno">الرقم<br>S.No.</th>
-                <th rowspan="2" class="col-description">Transaction عملية</th>
-                <th rowspan="2" class="col-qty">تاريخ<br>Date</th>
-                <th rowspan="2" class="col-price">طريقة الدفع<br>Payment Method</th>
-                <th colspan="2" class="col-price">Amount المبلغ</th>
-            </tr>
-            <tr>
-                <th>Dhs. درهم</th>
-                <th width="5%">Fils فلس</th>
-            </tr>
+                <tr>
+                    <th rowspan="2" class="col-sno">الرقم<br>S.No.</th>
+                    <th rowspan="2" class="col-description">Transaction عملية</th>
+                    <th rowspan="2" class="col-qty">تاريخ<br>Date</th>
+                    <th rowspan="2" class="col-price">طريقة الدفع<br>Payment Method</th>
+                    <th colspan="2" class="col-price">Amount المبلغ</th>
+                </tr>
+                <tr>
+                    <th>Dhs. درهم</th>
+                    <th width="5%">Fils فلس</th>
+                </tr>
             </thead>
             <tbody>
-            <!-- 12 empty rows to match the image -->
-            @foreach ($purchase->transactions as $index => $transaction)
-                @php
-                    $amount = $transaction->paid_amount ?? 0.00;
-                    // Split amount into integer and decimal parts
-                    [$integerPart, $decimalPart] = explode('.', number_format($amount, 2));
-                @endphp
+                <!-- 12 empty rows to match the image -->
+                @foreach ($purchase->transactions as $index => $transaction)
+                    @php
+                        $amount = $transaction->paid_amount ?? 0.00;
+                        // Split amount into integer and decimal parts
+                        [$integerPart, $decimalPart] = explode('.', number_format($amount, 2));
+                    @endphp
+                    <tr>
+                        <td class="col-sno">{{ $index + 1 }}</td>
+                        <td>{{ ucfirst(str_replace('_', ' ', $transaction->trxid)) }}</td>
+                        <td class="col-qty">{{ date('M d, Y', strtotime($transaction->transaction_date )) }}</td>
+                        <td class="col-price">{{ $transaction->payment_method }}</td>
+                        <td class="col-amount">{{ $integerPart }}</td>
+                        <td class="col-amount">{{ $decimalPart }}</td>
+                    </tr>
+                @endforeach
                 <tr>
-                    <td class="col-sno">{{ $index + 1 }}</td>
-                    <td>{{ ucfirst(str_replace('_', ' ', $transaction->trxid)) }}</td>
-                    <td class="col-qty">{{ date('M d, Y', strtotime($transaction->transaction_date )) }}</td>
-                    <td class="col-price">{{ $transaction->payment_method }}</td>
-                    <td class="col-amount">{{ $integerPart }}</td>
-                    <td class="col-amount">{{ $decimalPart }}</td>
+                    @php
+                        $total_amount = $purchase->transactions->sum('paid_amount') ?? 0.00;
+                        // Split amount into integer and decimal parts
+                        [$final_integerPart, $final_decimalPart] = explode('.', number_format($total_amount, 2));
+                    @endphp
+                    <td colspan="4">
+                        <div class="field">
+                            <span class="label">TOTAL DHS:</span>
+                            <span class="arabic-value" style="font-weight: 700;">{{ $amountInWords }}</span>
+                            <div class="arabic-label">المجموع</div>
+                        </div>
+                    </td>
+                    <td style="text-align: right; font-weight: 700;">{{ $final_integerPart }}</td>
+                    <td class="col-amount" style="text-align: right; font-weight: 700;">{{$final_decimalPart}}</td>
                 </tr>
-            @endforeach
-            <tr>
-                @php
-                    $total_amount = $purchase->transactions->sum('paid_amount') ?? 0.00;
-                    // Split amount into integer and decimal parts
-                    [$final_integerPart, $final_decimalPart] = explode('.', number_format($total_amount, 2));
-                @endphp
-                <td colspan="4">
-                    <div class="field">
-                        <span class="label">TOTAL DHS:</span>
-                        <span class="arabic-value" style="font-weight: 700;">{{ $amountInWords }}</span>
-                        <div class="arabic-label">المجموع</div>
-                    </div>
-                </td>
-                <td style="text-align: right; font-weight: 700;">{{ $final_integerPart }}</td>
-                <td class="col-amount" style="text-align: right; font-weight: 700;">{{$final_decimalPart}}</td>
-            </tr>
 
-            <tr>
-                @php
-                    $final_amount = $purchase->transactions->sum('final_amount') ?? 0.00;
-                @endphp
-                <td style="text-align: right; font-weight: 700;" colspan="3">Total Amount</td>
-                <td style="text-align: right; font-weight: 700;">{{ number_format($final_amount, 2) }}</td>
-                <td style="text-align: right; font-weight: 700;">Due</td>
-                <td style="text-align: right; font-weight: 700;">{{ number_format($final_amount - $total_amount, 2) }}</td>
-            </tr>
+                <tr>
+                    @php
+                        $final_amount = $purchase->transactions->sum('final_amount') ?? 0.00;
+                    @endphp
+                    <td style="text-align: right; font-weight: 700;" colspan="3">Total Amount</td>
+                    <td style="text-align: right; font-weight: 700;">{{ number_format($final_amount, 2) }}</td>
+                    <td style="text-align: right; font-weight: 700;">Due</td>
+                    <td style="text-align: right; font-weight: 700;">{{ number_format($final_amount - $total_amount, 2) }}</td>
+                </tr>
             </tbody>
         </table>
     </div>

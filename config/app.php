@@ -57,8 +57,6 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     'asset_url' => env('ASSET_URL'),
-    'vat' => env('VAT', 0.05), // 5%()
-    'vat_type' => env('VATTYPE', 'inclusive'),
 
     /*
     |--------------------------------------------------------------------------

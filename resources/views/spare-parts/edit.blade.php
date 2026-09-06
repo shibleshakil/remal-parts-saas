@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('spare-parts.index')
                 <a href="{{ route('spare-parts.index') }}" class="btn btn-primary">
                     {{ __('Spare Parts list') }} <i class="feather icon-eye"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -68,16 +70,43 @@
         let unitPrice = parseFloat(row.querySelector('.unit-price').value) || 0;
         let quantity = parseFloat(row.querySelector('.parts-quantity').value) || 0;
         row.querySelector('.total-parts-price').value = (unitPrice * quantity).toFixed(2);
+        calculateDueForRow(row);
+    }
+
+    function calculateDueForRow(row) {
+        const total = parseFloat(row.querySelector('.total-parts-price').value) || 0;
+        const paidInput = row.querySelector('.paid-amount');
+        const paid = parseFloat(paidInput.value) || 0;
+        const due = total - paid;
+        row.querySelector('.due-amount').value = due >= 0 ? due.toFixed(2) : 0;
+        validatePaidAmountForRow(row, paid, total);
+    }
+
+    function validatePaidAmountForRow(row, paid, total) {
+        const errorEl = row.querySelector('.paid-error');
+        const input = row.querySelector('.paid-amount');
+        if (paid > total) {
+            errorEl.style.display = 'block';
+            input.classList.add('is-invalid');
+        } else {
+            errorEl.style.display = 'none';
+            input.classList.remove('is-invalid');
+        }
     }
 
     function initCalculateTotals() {
         document.querySelectorAll('.purchase-line').forEach(row => {
             let unitInput = row.querySelector('.unit-price');
             let qtyInput = row.querySelector('.parts-quantity');
+            let paidInput = row.querySelector('.paid-amount');
 
             [unitInput, qtyInput].forEach(input => {
                 input.addEventListener('input', () => calculateTotalForRow(row));
             });
+
+            if (paidInput) {
+                paidInput.addEventListener('input', () => calculateDueForRow(row));
+            }
 
             // Run once on page load (prefill)
             calculateTotalForRow(row);
@@ -99,11 +128,7 @@
 
     $(document).on('input', '.paid-amount', function () {
         let row = $(this).closest('.purchase-line'); // find the specific line
-        let total = parseFloat(row.find('.total-parts-price').val()) || 0;
-        let paid = parseFloat($(this).val()) || 0;
-
-        let due = total - paid;
-        row.find('.due-amount').val(due >= 0 ? due.toFixed(2) : 0);
+        calculateDueForRow(row[0]);
     });
 
     $(function () {
@@ -127,6 +152,31 @@
 
         $form.on('submit', function (e) {
             let valid = true;
+
+            $('.purchase-line').each(function () {
+                const row = this;
+                const total = parseFloat(row.querySelector('.total-parts-price').value) || 0;
+                const paid = parseFloat(row.querySelector('.paid-amount').value) || 0;
+
+                if (paid > total) {
+                    valid = false;
+                    validatePaidAmountForRow(row, paid, total);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Paid Amount',
+                        text: 'Paid amount cannot be greater than the total purchase amount!',
+                        confirmButtonColor: '#3085d6',
+                    });
+                    return false; // break the loop
+                }
+            });
+
+            if (!valid) {
+                e.preventDefault();
+                submitBtn.removeAttr('disabled');
+                submitBtn.find('.spinner-border').remove();
+                return;
+            }
 
             $('.payment-section').each(function () {
                 const method = $(this).find('.payment-method').val();

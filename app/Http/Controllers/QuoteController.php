@@ -94,8 +94,8 @@ class QuoteController extends Controller
 
         $parts = VehicleDetails::whereNull('vehicle_id')
             ->with(['purchaseLines' => function ($q) {
-                $q->select('id', 'vehicle_detail_id', 'unit_price', 'quantity')
-                    ->groupBy('id', 'vehicle_detail_id', 'unit_price', 'quantity');
+                $q->select('id', 'vehicle_detail_id', 'unit_price', 'quantity', 'target_sell_price')
+                    ->groupBy('id', 'vehicle_detail_id', 'unit_price', 'quantity', 'target_sell_price');
             }])
             ->get()
             ->flatMap(function ($item) {
@@ -107,6 +107,7 @@ class QuoteController extends Controller
                         'car_name' => $item->car_name,
                         'car_model' => $item->car_model,
                         'unit_price' => (float)$line->unit_price,
+                        'target_sell_price' => (float)($line->target_sell_price ?? 0),
                         'uid' => $item->uid,
                         'available_quantity' => $item->purchaseLines
                             ->where('unit_price', $line->unit_price)
@@ -158,6 +159,7 @@ class QuoteController extends Controller
                 'date' => $validator->validated()['date'],
                 'final_amount' => $validator->validated()['final_amount'],
                 'expected_purchase_date' => $validator->validated()['expected_purchase_date'],
+                'branch_id' => active_branch_id(),
                 'created_by' => auth()->id(),
             ]);
 
@@ -179,6 +181,7 @@ class QuoteController extends Controller
                     'unit_price' => $product['unit_price'],
                     'quantity' => $product['quantity'],
                     'cost' => $product['cost'],
+                    'branch_id' => active_branch_id(),
                     'created_by' => auth()->id(),
                 ]);
             }
@@ -242,15 +245,6 @@ class QuoteController extends Controller
      */
     public function edit($id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $quote = Quote::with(['customer', 'quoteDetails'])->findOrFail($id);
         $customers = Customer::select('id', 'name', 'phone', 'address')->latest()->get();
         $vehicles = Vehicle::with('details')->select('id', 'name', 'uid')->get();
@@ -258,8 +252,8 @@ class QuoteController extends Controller
 
         $parts = VehicleDetails::whereNull('vehicle_id')
             ->with(['purchaseLines' => function ($q) {
-                $q->select('id', 'vehicle_detail_id', 'unit_price', 'quantity')
-                    ->groupBy('id', 'vehicle_detail_id', 'unit_price', 'quantity');
+                $q->select('id', 'vehicle_detail_id', 'unit_price', 'quantity', 'target_sell_price')
+                    ->groupBy('id', 'vehicle_detail_id', 'unit_price', 'quantity', 'target_sell_price');
             }])
             ->get()
             ->flatMap(function ($item) {
@@ -271,6 +265,7 @@ class QuoteController extends Controller
                         'car_name' => $item->car_name,
                         'car_model' => $item->car_model,
                         'unit_price' => (float)$line->unit_price,
+                        'target_sell_price' => (float)($line->target_sell_price ?? 0),
                         'uid' => $item->uid,
                         'available_quantity' => $item->purchaseLines
                             ->where('unit_price', $line->unit_price)
@@ -302,14 +297,6 @@ class QuoteController extends Controller
      */
     public function update(Request $request, $id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
 
         $validator = Validator::make($request->all(), [
             'customer' => ['nullable', 'exists:customers,id'],
@@ -530,13 +517,6 @@ class QuoteController extends Controller
                 $purchaseLine = PurchaseLines::find($product['item_id']);
 
                 if ($product['item_id'] !== '0') {
-                    // $part = VehicleDetails::with(['purchaseLines', 'saleDetails'])->findOrFail($product['item_id']);
-                    // $availableQuantity = $part->purchaseLines
-                    //     ->where('unit_price', $product['unit_price'])
-                    //     ->sum('quantity') - $part->saleDetails
-                    //     ->where('unit_price', $product['unit_price'])
-                    //     ->sum('quantity');
-
                     $availableQuantity = $purchaseLine->quantity ?? 0;
 
                     if ($availableQuantity < $product['quantity']) {
@@ -564,8 +544,12 @@ class QuoteController extends Controller
             }
 
             // update balance
-            $balance = Balance::firstOrCreate([], ['balance' => 0]);
-            $balance->increment('balance', $validator->validated()['paid_amount']);
+            $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
+            $balance->increment('balance', $validator->validated()['paid_amount'] ?? 0);
             $balance->refresh();
 
             Transaction::create([
@@ -575,7 +559,7 @@ class QuoteController extends Controller
                 'customer_id' => $sale->customer_id,
                 'transaction_date' => $validator->validated()['date'],
                 'final_amount' => $validator->validated()['final_amount'],
-                'status'           => $validator->validated()['final_amount'] > $validator->validated()['paid_amount'] ? 'partially_paid' : 'paid',
+                'status'           => $validator->validated()['paid_amount'] == 0 ? 'unpaid' : ($validator->validated()['final_amount'] > $validator->validated()['paid_amount'] ? 'partially_paid' : 'paid'),
                 'note' => 'Sale transaction for ' . ($validator->validated()['customer'] ? 'customer ID: ' . $validator->validated()['customer'] : 'Walking Customer'),
                 'created_by' => auth()->id(),
                 'payment_method'   => $validator->validated()['payment_method'],

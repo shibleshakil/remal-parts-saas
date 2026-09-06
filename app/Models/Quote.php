@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\BranchScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Quote extends Model
 {
@@ -28,7 +29,13 @@ class Quote extends Model
         'created_by',
         'updated_by',
         'deleted_by',
+        'branch_id',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new BranchScope);
+    }
 
     public static function boot(){
         parent::boot();

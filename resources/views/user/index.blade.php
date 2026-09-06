@@ -6,11 +6,11 @@
         <div class="content-header row">
             <div class="content-header-left col-md-6 col-12 mb-1">
                 <h3 class="content-header-title">
-                    @if(\App\Helpers\CommonHelper::userHasAccess())
+                    @can('user.create')
                         <a href="{{ route('user.create') }}" class="btn btn-primary">
                             {{ __('Add User') }} <i class="feather icon-plus"></i>
                         </a>
-                    @endif
+                    @endcan
                 </h3>
             </div>
             <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -48,20 +48,25 @@
                                                         <td>{{ $loop->iteration }}</td>
                                                         <td>{{ $user->name }}</td>
                                                         <td>{{ $user->email }}</td>
-                                                        <td>{{ $user->role }}</td>
+                                                        <td>{{ $user->role_name }}</td>
 
                                                         <td>
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @can('user.edit')
                                                             <a href="{{ route('user.edit', $user->id) }}"
                                                                 class="btn btn-md btn-primary" title="Edit"><i
                                                                     class="feather icon-edit"></i></a>
+                                                            @endcan
 
+
+
+                                                            @can('user.delete')
                                                             <button type="button" class="btn btn-md btn-danger"
                                                                 title="Delete"
                                                                 onclick="deleteData('{{ route('user.delete', $user->id) }}')">
                                                                 <i class="feather icon-trash"></i>
                                                             </button>
-                                                            @endif
+                                                            @endcan
+
                                                         </td>
                                                     </tr>
                                                 @empty

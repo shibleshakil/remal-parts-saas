@@ -1,5 +1,7 @@
 @extends('layouts.auth-app')
 
+@section('title', 'Reset Password')
+
 @section('content')
 
 <section class="row flexbox-container">
@@ -27,14 +29,14 @@
 
                             <fieldset class="form-group position-relative has-icon-left">
                                 <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}"
-                                    placeholder="Enter your Mail Address" required autocomplete="email" autofocus>
+                                placeholder="Enter your Mail Address" required autocomplete="email" autofocus>
                                 <div class="form-control-position">
                                     <i class="feather icon-mail"></i>
                                 </div>
                                 @error('email')
-                                <span class="invalid-feedback" role="alert">
-                                    <strong>{{ $message }}</strong>
-                                </span>
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong>{{ $message }}</strong>
+                                    </span>
                                 @enderror
                             </fieldset>
 

@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('spare-parts.create')
                 <a href="{{ route('spare-parts.create') }}" class="btn btn-primary">
                     {{ __('Add Spare Parts') }} <i class="feather icon-plus"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -109,36 +111,52 @@
                                                             <button type="button" class="dropdown-item" data-toggle="modal" data-target="#purchaseDetails{{ $sp->id }}">
                                                                 <i class="fa fa-eye"></i> Purchase Details
                                                             </button>
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @can('spare-parts.edit')
                                                             <a href="{{ route('spare-parts.edit', $sp->id) }}"
                                                                 class="dropdown-item" title="Edit">
                                                                 <i class="feather icon-edit-2"></i> Edit
                                                             </a>
-                                                            @endif
+                                                            @endcan
 
-                                                            @if (!empty($sp->barcode))
-                                                            <a href="{{ route('spare-parts.print_barcode', $sp->id) }}"
-                                                                class="dropdown-item" title="Print Barcode"
-                                                                target="_blank">
-                                                                <i class="fa fa-barcode"></i> Print Barcode
+                                                           {{--
+                                                           @can('spare-parts.add-similar')
+                                                            <a href="{{ route('spare-parts.add-similar', $sp->id) }}"
+                                                                class="dropdown-item" title="Add">
+                                                                <i class="feather icon-plus"></i> Add Parts
                                                             </a>
-                                                            @endif
+                                                            @endcan
+                                                            --}}
 
-                                                            @if (!empty($sp->qr_code))
-                                                            <a href="{{ route('spare-parts.print_qrcode', $sp->id) }}"
-                                                                class="dropdown-item" title="Print QRcode"
-                                                                target="_blank">
-                                                                <i class="fa fa-qrcode"></i> Print QRcode
-                                                            </a>
-                                                            @endif
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @can('spare-parts.print_barcode')
+                                                                @if (!empty($sp->barcode))
+                                                                <a href="{{ route('spare-parts.print_barcode', $sp->id) }}"
+                                                                    class="dropdown-item" title="Print Barcode"
+                                                                    target="_blank">
+                                                                    <i class="fa fa-barcode"></i> Print Barcode
+                                                                </a>
+                                                                @endif
+                                                            @endcan
+
+                                                            @can('spare-parts.print_qrcode')
+                                                                @if (!empty($sp->qr_code))
+                                                                <a href="{{ route('spare-parts.print_qrcode', $sp->id) }}"
+                                                                    class="dropdown-item" title="Print QRcode"
+                                                                    target="_blank">
+                                                                    <i class="fa fa-qrcode"></i> Print QRcode
+                                                                </a>
+                                                                @endif
+                                                            @endcan
+
+
+                                                            @can('spare-parts.delete')
                                                             <button type="button" class="dropdown-item" title="Delete"
                                                                 onclick="deleteData('{{ route('spare-parts.delete', $sp->id) }}')">
                                                                 <i class="feather icon-trash"></i> Delete
                                                             </button>
-                                                            @endif
+                                                            @endcan
                                                         </div>
                                                     </div>
+
                                                     <!-- Modal -->
                                                     <div class="modal fade text-left" id="purchaseDetails{{ $sp->id }}" role="dialog" aria-labelledby="purchaseDetailslabel{{ $sp->id }}" aria-hidden="true">
                                                         <div class="modal-dialog modal-lg" role="document">

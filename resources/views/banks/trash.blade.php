@@ -6,12 +6,17 @@
         <div class="content-header row">
             <div class="content-header-left col-md-6 col-12 mb-1">
                 <h3 class="content-header-title">
+                    @can('banks.create')
                     <a href="{{ route('banks.create') }}" class="btn btn-primary">
                         {{ __('Add Bank') }} <i class="feather icon-plus"></i>
                     </a>
-                    <a href="" class="btn btn-warning">
-                        {{ __('View Trashed') }}
+                    @endcan
+
+                    @can('banks.index')
+                    <a href="{{ route('banks.index') }}" class="btn btn-warning">
+                        {{ __('Bank List') }}
                     </a>
+                    @endcan
                 </h3>
             </div>
             <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -95,20 +100,14 @@
                                                         <td>{{ $data->account_no }}</td>
                                                         <td>{{ $data->branch }}</td>
                                                         <td>
-
-
-                                                            {{-- <a href="{{ route('banks.restore', $data->id) }}"
-                                                                class="btn btn-md btn-success" title="Restore"><i
-                                                                    class="fa fa-undo"></i></a> --}}
-
+                                                            @can('banks.restore')
                                                             <button type="button" class="btn btn-md btn-success"
                                                                 title="Restore"
                                                                 onclick="restoreData('{{ route('banks.restore', $data->id) }}')">
                                                                 <i class="fa fa-undo"></i>
                                                             </button>
-
+                                                            @endcan
                                                         </td>
-
                                                     </tr>
                                                 @empty
                                                     <tr>

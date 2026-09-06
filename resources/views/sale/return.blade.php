@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('sales.index')
                 <a href="{{ route('sales.index') }}" class="btn btn-primary">
                     {{ __('Sale list') }} <i class="feather icon-eye"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="col-md-6 col-12">
@@ -113,7 +115,7 @@
                                                 </tbody>
 
                                                 <tfoot>
-                                                     <tr class="font-weight-bold">
+                                                    <tr class="font-weight-bold">
                                                         <td colspan="5" class="text-right">Total Refund Subtotal</td>
                                                         <td class="text-right">
                                                             <span id="refund_subtotal_text">0.00</span>
@@ -740,78 +742,6 @@
             updateTotalCost();
         };
 
-        // $('#vat_type').on('change', function () {
-        //     firstLoad = false;
-        //     isVatTypeChanged = true;
-
-        //     $('#vat_type_text').text($(this).val());
-
-        //     updateItemRow($(this).val());
-
-        //     isVatTypeChanged = false;
-
-        //     updateTotalCost();
-        // });
-
-        // function updateItemRow(vatType) {
-
-        //     $('#product-rows tr').each(function () {
-
-        //         const unitPriceInput = $(this).find('.unit-price');
-        //         const qtyInput = $(this).find('.qty');
-        //         const totalPriceInput = $(this).find('.cost');
-
-        //         if (unitPriceInput.length) {
-        //             let price = parseFloat(unitPriceInput.val()) || 0;
-        //             let totalCost = 0;
-
-        //             if (vatType === 'exclusive') {
-        //                 // Convert inclusive price to exclusive price
-        //                 price = price - (price * vatRate / (1 + vatRate));
-
-        //             } else if (vatType === 'inclusive') {
-        //                 // Convert exclusive price to inclusive price
-        //                 price = price + (price * vatRate);
-        //             }
-
-        //             totalCost = price * qtyInput.val();
-
-        //             totalPriceInput.val(totalCost.toFixed(2));
-        //             unitPriceInput.val(price.toFixed(2));
-        //         }
-        //     });
-
-        //     let returnSubtotal = 0;
-        //     $('#return-rows tr').each(function () {
-        //         const returnUnitPriceInput = $(this).find('.unit-price');
-        //         const returnQtyInput = $(this).find('.return-qty');
-        //         const returnTotalPriceInput = $(this).find('.return-cost');
-
-        //         if (returnUnitPriceInput.length) {
-        //             let returnPrice = parseFloat(returnUnitPriceInput.text()) || 0;
-        //             let returnTotalCost = 0;
-
-        //             if (vatType === 'exclusive') {
-        //                 // Convert inclusive price to exclusive price
-        //                 returnPrice = returnPrice - (returnPrice * vatRate / (1 + vatRate));
-
-        //             } else if (vatType === 'inclusive') {
-        //                 // Convert exclusive price to inclusive price
-        //                 returnPrice = returnPrice + (returnPrice * vatRate);
-        //             }
-
-        //             returnTotalCost = returnPrice * returnQtyInput.val();
-
-        //             returnSubtotal += returnTotalCost;
-
-        //             returnUnitPriceInput.text(returnPrice.toFixed(2));
-        //             returnTotalPriceInput.val(returnTotalCost.toFixed(2));
-        //         }
-        //     });
-
-        //     $('#refund_subtotal_text').text(returnSubtotal.toFixed(2));
-        // }
-
         function updateTotalCost() {
             let total = 0;
 
@@ -1202,7 +1132,7 @@
                                     $form.prepend(`<div class="text-danger mb-2" data-field="${bracketName}">${message}</div>`);
                                 }
                             });
-                        }else if(xhr.status === 403 && xhr.responseJSON && xhr.responseJSON.errors){
+                        }else  if(xhr.status === 403 && xhr.responseJSON && xhr.responseJSON.errors){
                             Swal.fire({
                                 title: "Error",
                                 text: "Balance exceeds, please check available balance.",

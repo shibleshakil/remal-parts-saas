@@ -17,7 +17,7 @@
 
     <div class="col-md-6 form-group">
         <label for="email">Email</label>
-        <input type="text" class="form-control" name="email" id="email"
+        <input type="email" class="form-control" name="email" id="email"
         value="{{$url == 'customer.edit' ? $data->email : old('email')}}">
     </div>
 

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use DateTime;
 use App\Models\Bank;
 use App\Models\Sale;
 use App\Mail\SaleMail;
@@ -109,32 +108,31 @@ class SaleController extends Controller
         $banks = Bank::select('id', 'bank_name', 'account_name', 'account_no')->latest()->get();
 
         $parts = VehicleDetails::whereNull('vehicle_id')
-                ->with(['purchaseLines' => function ($q) {
+            ->with(['purchaseLines' => function ($q) {
                     $q->select('id', 'vehicle_detail_id', 'unit_price', 'quantity', 'target_sell_price')
                     ->groupBy('id', 'vehicle_detail_id', 'unit_price', 'quantity', 'target_sell_price');
-                }])
-                ->get()
-                ->flatMap(function ($item) {
-                    return $item->purchaseLines->map(function ($line) use ($item) {
-                        return (object)[
-                            'id' => $line->id,
-                            'parts_name' => $item->parts_name,
-                            'car_name' => $item->car_name,
-                            'car_model' => $item->car_model,
-                            'unit_price' => (float)$line->unit_price,
-                            'target_sell_price' => $line->target_sell_price,
-                            'uid' => $item->uid,
-                            'available_quantity' => $item->purchaseLines
-                                ->where('unit_price', $line->unit_price)
-                                ->sum('quantity'),
-                        ];
-                    });
-                })
-                ->filter(function ($item) {
-                    return $item->available_quantity > 0;
-                })
-                ->values();
-
+            }])
+            ->get()
+            ->flatMap(function ($item) {
+                return $item->purchaseLines->map(function ($line) use ($item) {
+                    return (object)[
+                        'id' => $line->id,
+                        'parts_name' => $item->parts_name,
+                        'car_name' => $item->car_name,
+                        'car_model' => $item->car_model,
+                        'unit_price' => (float) $line->unit_price,
+                        'target_sell_price' => $line->target_sell_price,
+                        'uid' => $item->uid,
+                        'available_quantity' => $item->purchaseLines
+                            ->where('unit_price', $line->unit_price)
+                            ->sum('quantity'),
+                    ];
+                });
+            })
+            ->filter(function ($item) {
+                return $item->available_quantity > 0;
+            })
+            ->values();
 
         return view('sale.create', compact('customers', 'vehicles', 'parts','banks'));
     }
@@ -155,7 +153,10 @@ class SaleController extends Controller
         }
 
         try {
-            $customer = Customer::create($validator->validated());
+            $customerData = $validator->validated();
+            $customerData['branch_id'] = active_branch_id();
+            $customer = Customer::create($customerData);
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Customer added successfully',
@@ -189,7 +190,10 @@ class SaleController extends Controller
         }
 
         try {
-            $bank =Bank::create($validator->validated());
+            $bankData = $validator->validated();
+            $bankData['branch_id'] = active_branch_id();
+            $bank =Bank::create($bankData);
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Bank added successfully',
@@ -226,11 +230,6 @@ class SaleController extends Controller
                             'available_quantity' => $item->purchaseLines
                                 ->where('unit_price', $line->unit_price)
                                 ->sum('quantity'),
-                            // 'available_quantity' => $item->purchaseLines
-                            //     ->where('unit_price', $line->unit_price)
-                            //     ->sum('quantity') - $item->saleDetails
-                            //     ->where('unit_price', $line->unit_price)
-                            //     ->sum('quantity'),
                         ];
                     });
                 })
@@ -269,7 +268,6 @@ class SaleController extends Controller
                     return $item->purchaseLines->map(function ($line) use ($item) {
                         return [
                             'id' => $line->id,
-                            // 'purchase_id' => $line->id,
                             'vehicle_id' => $item->vehicle_id,
                             'uid' => $item->uid,
                             'parts_name' => $item->parts_name,
@@ -294,7 +292,6 @@ class SaleController extends Controller
                     'message' => "{$barcode} Parts is out of stock or not found",
                 ], 404);
             }
-
 
             return response()->json([
                 'success' => true,
@@ -371,6 +368,7 @@ class SaleController extends Controller
                 'paid_amount' => $validator->validated()['paid_amount'],
                 'warranty' => $validator->validated()['warranty'],
                 'promise_payment_date' => $validator->validated()['promise_payment_date'],
+                'branch_id' => active_branch_id(),
                 'created_by' => auth()->id(),
                 'item_purchase_amount' => $itemPurchaseAmount,
             ]);
@@ -382,7 +380,6 @@ class SaleController extends Controller
                 }
 
                 $purchaseLine = PurchaseLines::find($product['item_id']);
-
 
                 if ($purchaseLine) {
                     $availableQuantity = $purchaseLine->quantity ?? 0;
@@ -408,12 +405,18 @@ class SaleController extends Controller
                     'quantity' => $product['quantity'],
                     'cost' => $product['cost'],
                     'created_by' => auth()->id(),
+                    'branch_id' => active_branch_id(),
                 ]);
             }
 
+
             // update balance
-            $balance = Balance::firstOrCreate([], ['balance' => 0]);
-            $balance->increment('balance', $validator->validated()['paid_amount']);
+            $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
+            $balance->increment('balance', $validator->validated()['paid_amount'] ?? 0);
             $balance->refresh();
 
             Transaction::create([
@@ -423,13 +426,14 @@ class SaleController extends Controller
                 'customer_id' => $sale->customer_id,
                 'transaction_date' => $validator->validated()['date'],
                 'final_amount' => $validator->validated()['final_amount'],
-                'status'           => $validator->validated()['final_amount'] > $validator->validated()['paid_amount'] ? 'partially_paid' : 'paid',
+                'status'           => $validator->validated()['paid_amount'] == 0 ? 'unpaid' : ($validator->validated()['paid_amount'] < $validator->validated()['final_amount'] ? 'partially_paid' : 'paid'),
                 'note' => 'Sale transaction for ' . ($validator->validated()['customer'] ? 'customer ID: ' . $validator->validated()['customer'] : 'Walking Customer'),
                 'created_by' => auth()->id(),
                 'payment_method'   => $validator->validated()['payment_method'],
                 'bank_id'          => $validator->validated()['bank_id'],
                 'paid_amount'      => $validator->validated()['paid_amount'],
-                'current_balance'  => $balance->balance
+                'current_balance'  => $balance->balance,
+                'branch_id' => active_branch_id(),
             ]);
 
 
@@ -480,17 +484,7 @@ class SaleController extends Controller
 
     public function edit($id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-
         $sale = Sale::with('items', 'items.purchaseLines','transactions')->findOrFail($id);
-
 
         $customers = Customer::select('id', 'name', 'phone', 'address')->latest()->get();
         $vehicles = Vehicle::with('details')->select('id', 'name', 'uid')->get();
@@ -505,11 +499,10 @@ class SaleController extends Controller
                 return $item->purchaseLines->map(function ($line) use ($item) {
                     return (object)[
                         'id' => $line->id,
-                        // 'purchase_id' => $line->id,
                         'parts_name' => $item->parts_name,
                         'car_name' => $item->car_name,
                         'car_model' => $item->car_model,
-                        'unit_price' => (float)$line->unit_price,
+                        'unit_price' => (float) $line->unit_price,
                         'target_sell_price' => $line->target_sell_price,
                         'uid' => $item->uid,
                         'available_quantity' => $item->purchaseLines
@@ -522,7 +515,6 @@ class SaleController extends Controller
                 return $item->available_quantity > 0;
             })
             ->values();
-
 
         $existingQuantities = $sale->items->whereIn('item_type', ['spare_part', 'car_spare_part'])
             ->where('item_id', '!=', '0')
@@ -543,15 +535,6 @@ class SaleController extends Controller
 
     public function update(Request $request, $id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-
         $validator = Validator::make($request->all(), [
             'customer' => ['nullable', 'exists:customers,id'],
             'date' => ['required', 'date'],
@@ -670,7 +653,11 @@ class SaleController extends Controller
                 $itemPurchaseAmount += $product['item_actual_price'];
             }
 
-            $balance = Balance::firstOrCreate([], ['balance' => 0]);
+            $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
             $newPaidAmount = $validator->validated()['paid_amount'] ?? 0;
 
@@ -703,7 +690,8 @@ class SaleController extends Controller
                 'payment_method'   => $validator->validated()['payment_method'],
                 'bank_id'          => $validator->validated()['bank_id'],
                 'paid_amount'      => $validator->validated()['paid_amount'] ?? 0,
-                'current_balance'  => $balance->balance
+                'current_balance'  => $balance->balance,
+                'branch_id'        => active_branch_id(),
             ]);
 
 
@@ -747,15 +735,11 @@ class SaleController extends Controller
 
     public function delete($id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         try {
             DB::beginTransaction();
@@ -775,7 +759,7 @@ class SaleController extends Controller
             });
 
             $transactions = Transaction::where('sale_id', $sale->id);
-            $balance->decrement('balance',  $transactions->sum('paid_amount'));
+            $balance->decrement('balance',  $transactions->sum('paid_amount') ?? 0);
             SaleDetails::where('sale_id', $sale->id)->delete();
             $transactions->delete();
             $sale->update(['deleted_by' => auth()->id()]);
@@ -817,7 +801,7 @@ class SaleController extends Controller
                         'parts_name' => $item->parts_name,
                         'car_name' => $item->car_name,
                         'car_model' => $item->car_model,
-                        'unit_price' => (float)$line->unit_price,
+                        'unit_price' => (float) $line->unit_price,
                         'target_sell_price' => $line->target_sell_price,
                         'uid' => $item->uid,
                         'available_quantity' => $item->purchaseLines
@@ -835,17 +819,11 @@ class SaleController extends Controller
             ->where('item_id', '!=', '0')
             ->mapWithKeys(function ($item) {
                 $part = PurchaseLines::find($item->purchase_line_id);
-                // $part = VehicleDetails::with(['purchaseLines', 'saleDetails'])->find($item->item_id);
 
                 if (!$part) {
                     return [$item->purchase_line_id => 0];
                 }
                 $availableQuantity = $part->quantity;
-                // $availableQuantity = $part->purchaseLines
-                //     // ->where('unit_price', $item->unit_price)
-                //     // ->sum('quantity') - $part->saleDetails
-                //     ->where('unit_price', $item->unit_price)
-                //     ->sum('quantity');
                 return [$item->purchase_line_id => $availableQuantity + $item->quantity]; // Add back sold quantity
             })->toArray();
 
@@ -855,7 +833,11 @@ class SaleController extends Controller
     public function returnSale(Request $request, $id)
     {
         //  Pre-validation balance check
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+       $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         if ($request->filled('paid_amount') && $request->paid_amount > 0) {
             if ($request->paid_amount > $balance->balance) {
@@ -927,7 +909,6 @@ class SaleController extends Controller
 
             $validated = $validator->validated();
 
-
             $totalRefund = 0;
             $totalRefundWithVat = 0;
             $returnedItems = [];
@@ -937,8 +918,8 @@ class SaleController extends Controller
             if (!empty($validated['return_items'])) {
                 foreach ($validated['return_items'] as $returnItem) {
                     $saleDetail = $sale->saleDetails->where('sale_id', $sale->id)
-                        ->where('id', $returnItem['sale_detail_id'])
-                        ->firstOrFail();
+                    ->where('id', $returnItem['sale_detail_id'])
+                    ->firstOrFail();
 
                     if ($returnItem['quantity'] > $saleDetail->quantity) {
                         throw new \Exception("Return quantity for '{$saleDetail->item_name}' exceeds sold quantity.");
@@ -959,7 +940,7 @@ class SaleController extends Controller
                         $purchaseLine->save();
                     }
 
-
+                    // Store returned item details for return list
                     $returnedItems[] = [
                         'id' => $saleDetail->id,
                         'item_name' => $saleDetail->item_name,
@@ -1028,6 +1009,7 @@ class SaleController extends Controller
                         'item_actual_price' => $purchaseLine->unit_price ?? 0,
                         'quantity'        => $exchangeItem['quantity'],
                         'cost'            => $newItemCalculatedCost,
+                        'branch_id'       => active_branch_id(),
                         'created_by'      => auth()->id(),
                     ]);
 
@@ -1064,6 +1046,7 @@ class SaleController extends Controller
                     'note' => "Exchange for Sale #{$sale->id}",
                     'created_by' => auth()->id(),
                     'current_balance' => $balance->balance, //22815 + 400 = 23215
+                    'branch_id' => active_branch_id(),
                 ]);
 
             }
@@ -1088,6 +1071,7 @@ class SaleController extends Controller
                     'note' => "Payment for Sale #{$sale->id}",
                     'created_by' => auth()->id(),
                     'current_balance' => $balance->balance,
+                    'branch_id' => active_branch_id(),
                 ]);
 
             }else if($request->refund_amount > 0){
@@ -1108,6 +1092,7 @@ class SaleController extends Controller
                     'note' => "Return refund for Sale #{$sale->id}",
                     'created_by' => auth()->id(),
                     'current_balance' => $balance->balance,
+                    'branch_id' => active_branch_id(),
                 ]);
 
             }
@@ -1143,21 +1128,20 @@ class SaleController extends Controller
             DB::commit();
 
             if (request()->ajax()) {
-                $sale->refresh();
+                    $sale->refresh();
+                    $invoiceNo = $sale->invoice_no ?? $sale->id;
+                    $date = $validated['return_date']??now()->format('Y-m-d');
+                    $customerName = $sale->customer->name ?? 'Walking Customer';
+                    $vat = $sale->vat;
 
-                $invoiceNo = $sale->invoice_no ?? $sale->id;
-                $date = $validated['return_date']??now()->format('Y-m-d');
-                $customerName = $sale->customer->name ?? 'Walking Customer';
-                $vat = $sale->vat;
-
-                $paidAmount = $request->paid_amount ?? 0;
-                $refundAmount = $request->refund_amount ?? 0;
-                $previousDue = $request->previous_due_amount ?? 0;
+                    $paidAmount = $request->paid_amount ?? 0;
+                    $refundAmount = $request->refund_amount ?? 0;
+                    $previousDue = $request->previous_due_amount ?? 0;
 
 
-                $htmlView = view('sale.return_invoice',
+                    $htmlView = view('sale.return_invoice',
                                 compact('sale','date','invoiceNo','customerName','returnedItems','exchangeItems', 'vat', 'paidAmount', 'refundAmount', 'previousDue')
-                                )->render();
+                                    )->render();
 
                 return response()->json([
                     'status' => 'success',
@@ -1183,6 +1167,7 @@ class SaleController extends Controller
             'unit_price' => $saleDetail->unit_price,
             'quantity' => $returnItem['quantity'],
             'refund_amount' => $saleDetail->unit_price * $returnItem['quantity'],
+            'branch_id' => active_branch_id(),
         ]);
     }
 
@@ -1194,7 +1179,11 @@ class SaleController extends Controller
 
     public function payDue(Request $request, $id)
     {
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         $validator = Validator::make($request->all(), [
             'payment_amount' => ['required', 'numeric', 'min:0'],
@@ -1235,20 +1224,20 @@ class SaleController extends Controller
                 'current_balance' => $balance->balance + $validator->validated()['payment_amount'],
             ]);
 
-            $balance->increment('balance', $validator->validated()['payment_amount']);
+            $balance->increment('balance', $validator->validated()['payment_amount'] ?? 0);
 
             DB::commit();
 
             if (request()->ajax()) {
-                    $numberToWords = new NumberToWords();
-                    // Create number transformer for Arabic
-                    $numberTransformer = $numberToWords->getNumberTransformer('ar');
-                    $amountInWords =  $numberTransformer->toWords($transaction->paid_amount);
-                    $transactions[0] = $transaction;
+                $numberToWords = new NumberToWords();
+                // Create number transformer for Arabic
+                $numberTransformer = $numberToWords->getNumberTransformer('ar');
+                $amountInWords =  $numberTransformer->toWords($transaction->paid_amount);
+                $transactions[0] = $transaction;
 
-                    $transactions = collect($transactions);
+                $transactions = collect($transactions);
 
-                    $htmlView = view('sale.pay-slip', compact('transactions','amountInWords'))->render();
+                $htmlView = view('sale.pay-slip', compact('transactions','amountInWords'))->render();
 
                 return response()->json([
                     'status' => 'success',

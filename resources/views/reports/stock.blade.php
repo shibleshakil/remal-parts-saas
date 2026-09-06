@@ -230,12 +230,12 @@
                                                         <td>
                                                             <button type="button" class="btn btn-sm btn-primary"
                                                                 data-toggle="modal" data-target="#partsModal{{ $modalId }}">
-                                                                <i class="fa fa-eye"></i> All Parts Info
+                                                                <i class="fa fa-eye"></i> All Parts Info ({{ $parts->count() }} )
                                                             </button>
 
                                                             <button type="button" class="btn btn-sm btn-success"
                                                                 data-toggle="modal" data-target="#availablePartsModal{{ $modalId }}">
-                                                                <i class="fa fa-eye"></i> Available Parts Info
+                                                                <i class="fa fa-eye"></i> Available Parts Quantity ({{ $parts->where('total_quantity', '>', 0)->sum('total_quantity') }})
                                                             </button>
 
                                                             <!-- All parts info modal  -->
@@ -366,14 +366,13 @@
                                                 @endforeach
                                             </tbody>
                                             <tfoot>
-                                                <tr>
-                                                    <th colspan="3" style="text-align:right;">
-                                                        Total Current Stock Balance:
-                                                    </th>
-                                                    <th style="text-align:right;">{{number_format($grandTotalAmount, 2)}}</th>
-                                                    <th style="text-align:right;"></th>
+                                                 <tr>
+                                                    <th style="text-align:right;">Total Current Stock Quantity:</th>
+                                                    <th style="text-align:right;">{{ $grandTotalQuantity }}</th>
+                                                    <th style="text-align:right;">Total Current Stock Balance:</th>
+                                                    <th style="text-align:right;">{{ $grandTotalAmount }}</th>
                                                 </tr>
-                                            </tfoot>
+                                        </tfoot>
                                         </table>
                                     @endif
                                 </div>
@@ -396,17 +395,15 @@
             searching: false,
             info: false,
             ordering: false,
-            buttons: [
-                {
+            buttons: [{
                     extend: 'excelHtml5',
-                    title: 'Stock Report',
+                    title: 'Stock Report'
                     footer: true,
                     exportOptions: {
                         columns: ':visible'
                     }
-
                 },
-               {
+                {
                     extend: 'pdfHtml5',
                     title: 'Stock Report',
                     footer: false, // disable default repeated footer
@@ -458,7 +455,6 @@
     $('.datatable2').each(function() {
         var vehicleName = $(this).data('vehicle-name') || 'Vehicle Parts List';
         var table = $(this);
-
         // Check if this table is already initialized
         if (!$.fn.DataTable.isDataTable(this)) {
             $(this).DataTable({
@@ -467,8 +463,7 @@
                 searching: false,
                 info: false,
                 ordering: false,
-                buttons: [
-                    {
+                buttons: [{
                         extend: 'excelHtml5',
                         title: vehicleName,
                         footer: true,
@@ -480,7 +475,7 @@
                     {
                         extend: 'pdfHtml5',
                         title: vehicleName,
-                        customize: function (doc) {
+                         customize: function (doc) {
 
                             var table = $('.datatable2').first();
                             var row = [];
@@ -501,7 +496,7 @@
                     {
                         extend: 'print',
                         title: vehicleName,
-                        footer: true,
+                         footer: true,
                         customize: function (win) {
                             var $body = $(win.document.body);
 
@@ -541,9 +536,9 @@
                 if (resp.status === 'success' && resp.data) {
                     totalStockBalance = parseFloat(resp.data[0].parts_stock_balance ?? 0) + parseFloat(resp.data[0].vehicle_stock_balance ?? 0);
                     $('#vehicle-stock-balance').text(parseFloat(resp.data[0].vehicle_stock_balance ?? 0).toFixed(2));
-                    $('#vehicle-stock-quantity').text(resp.data[0].vehicle_stock_quantity ?? 0);
+                    $('#vehicle-stock-quantity').text(parseFloat(resp.data[0].vehicle_stock_quantity ?? 0).toFixed(2));
                     $('#parts-stock-balance').text(parseFloat(resp.data[0].parts_stock_balance ?? 0).toFixed(2));
-                    $('#parts-stock-quantity').text(resp.data[0].parts_stock_quantity ?? 0);
+                    $('#parts-stock-quantity').text(parseFloat(resp.data[0].parts_stock_quantity ?? 0).toFixed(2));
                     $('#total-stock-balance').text(parseFloat(totalStockBalance).toFixed(2));
                 } else {
                     console.warn('response structure unexpected, check network tab.');

@@ -9,18 +9,6 @@ class BalanceStatementController extends Controller
 {
     public function index()
     {
-        if (!(\App\Helpers\CommonHelper::userHasAccess())) {
-            if (request()->ajax()) {
-                return response()->json([
-                    'message' => 'Sorry, you’re not authorized to access this section.'
-                ], 403);
-            }
-
-            return back()->with(
-                'error',
-                'Sorry, you’re not authorized to access this section.'
-            );
-        }
 
         $from = request('from')
             ? Carbon::parse(request('from'))->startOfDay()

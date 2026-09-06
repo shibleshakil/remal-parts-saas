@@ -119,26 +119,25 @@
                                                                                     <tr>
                                                                                         <td>{{ $item->partsDetail?->parts_name ?? $item->item_name }} {{ $item->partsDetail?->uid ? ' - ' : '' }} {{ $item->partsDetail->uid ?? '' }}</td>
                                                                                         <td>{{ $item->sale?->invoice_no }}</td>
-                                                                                        <td class="text-nowrap">{{ optional($item->sale)->date ? (\Carbon\Carbon::parse($item->sale->date)->format('d M Y')) : '' }}</td>
+                                                                                        <td class="text-nowrap">{{ optional($item->sale)->date ? date('d-m-Y', strtotime($item->sale->date)) : '' }}</td>
                                                                                         <td>{{ number_format($item->unit_price, 2) }}</td>
                                                                                         <td>{{ $item->quantity }}</td>
                                                                                         <td>{{ number_format($item->cost, 2) }}</td>
                                                                                     </tr>
                                                                                     @endforeach
                                                                                 </tbody>
-
                                                                                 <tfoot>
-                                                                                        <tr>
-                                                                                            <th></th>
-                                                                                            <th></th>
-                                                                                            <th></th>
-                                                                                            <th class="text-right">Total:</th>
-                                                                                            <th>{{ array_sum($vehicle->saleDetails->pluck('quantity')->toArray()) }}</th>
-                                                                                            <th>
-                                                                                                {{ number_format(array_sum($vehicle->saleDetails->pluck('cost')->toArray()), 2) }}
-                                                                                            </th>
-                                                                                        </tr>
-                                                                                    </tfoot>
+                                                                                    <tr>
+                                                                                        <th></th>
+                                                                                        <th></th>
+                                                                                        <th></th>
+                                                                                        <th class="text-right">Total:</th>
+                                                                                        <th>{{ array_sum($vehicle->saleDetails->pluck('quantity')->toArray()) }}</th>
+                                                                                        <th>
+                                                                                            {{ number_format(array_sum($vehicle->saleDetails->pluck('cost')->toArray()), 2) }}
+                                                                                        </th>
+                                                                                    </tr>
+                                                                                </tfoot>
                                                                             </table>
                                                                             @else
                                                                             <span class="text-muted">No products</span>
@@ -156,8 +155,8 @@
                                                 </td>
                                             </tr>
                                             @endforeach
-                                        </tbody>
-                                        <tfoot id="vehicleSalesTableFooter">
+                                            </tbody>
+                                            <tfoot id="vehicleSalesTableFooter">
                                                 <tr>
                                                     <th></th>
                                                     <th></th>

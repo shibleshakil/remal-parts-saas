@@ -22,6 +22,16 @@ $url = Route::currentRouteName();
         </div>
     </div>
 
+    <!-- Spare Parts -->
+    <div class="col-md-6 form-group">
+        <label for="spare_parts">Spare Parts</label>
+        <select name="spare_parts" id="spare_parts" class="form-control select2">
+            <option value="">Select Spare Part</option>
+        </select>
+        @error('spare_parts')
+        <small class="text-danger">{{ $message }}</small>
+        @enderror
+    </div>
     <!-- Spare Parts Selector -->
     <div class="col-md-6">
         <div class="form-group">
@@ -36,12 +46,14 @@ $url = Route::currentRouteName();
                     @endforeach
                 </select>
 
+                @can('spare-parts.create')
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="button" title="Add New Spare Part" data-toggle="modal"
                         data-target="#inlineSparePartForm">
                         <i class="feather icon-plus"></i>
                     </button>
                 </div>
+                @endcan
             </div>
         </div>
     </div>
@@ -75,12 +87,15 @@ $url = Route::currentRouteName();
                     </option>
                     @endforeach
                 </select>
+
+                @can('supplier.create')
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="button" title="Add New Supplier" data-toggle="modal"
                         data-target="#inlineSupplierForm">
                         <i class="feather icon-plus"></i>
                     </button>
                 </div>
+                @endcan
             </div>
         </div>
     </div>
@@ -132,6 +147,7 @@ $url = Route::currentRouteName();
             min="0" value="">
 
         <small id="balanceError" class="text-danger pt-1" style="display:none;">Entered amount exceeds current balance!</small>
+        <small id="paidError" class="text-danger pt-1" style="display:none;">Paid amount cannot exceed total purchase amount!</small>
     </div>
 
     <div class="col-md-3 form-group">
@@ -150,7 +166,7 @@ $url = Route::currentRouteName();
                     Bank Transfer</option>
                 <option value="cheque">
                     Cheque</option>
-                <option value="due">Due</option>
+                <option value="due" {{ old('payment_method') == 'due' ? 'selected' : '' }}>Due</option>
             </select>
 
 
@@ -164,12 +180,15 @@ $url = Route::currentRouteName();
                     <option value="{{$bank->id}}">Name: {{ $bank->bank_name }} - Account Name: {{ $bank->account_name }} - Account No: {{ $bank->account_no }}</option>
                     @endforeach
                 </select>
+
+                @can('banks.create')
                 <div class="input-group-append">
                     <button class="btn btn-primary" type="button" title="Add New Customer" data-toggle="modal"
                         data-target="#inlineBankForm">
                         <i class="feather icon-plus"></i>
                     </button>
                 </div>
+                @endcan
             </div>
         </div>
     </div>

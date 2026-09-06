@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
-                <a href="{{ route('purchase.create') }}" class="btn btn-primary">
+                @can('purchase.create')
+               <a href="{{ route('purchase.create') }}" class="btn btn-primary">
                     {{ __('Add Purchase') }} <i class="feather icon-plus"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -93,11 +95,11 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                        @foreach ($datas as $key => $sp)
+                                            @foreach ($datas as $key => $sp)
                                             @php
                                                 $total = $sp?->transactions?->sum('final_amount') ?? 0;
+                                                $due = $sp?->transactions?->sum('final_amount') - $sp?->transactions?->sum('paid_amount');
                                                 $paidAmount = $sp?->transactions?->sum('paid_amount');
-                                                $due = $total - $paidAmount;
                                             @endphp
                                             <tr>
                                                 <td>
@@ -106,22 +108,29 @@
                                                             Action
                                                         </button>
                                                         <div class="dropdown-menu arrow">
+
+                                                            @can('purchase.invoice')
                                                             <a href="{{ route('purchase.invoice', $sp->invoice_no) }}"
-                                                               target="_blank"
-                                                               class="dropdown-item" title="Invoice">
+                                                                target="_blank"
+                                                                class="dropdown-item" title="Invoice">
                                                                 <i class="feather icon-file"></i> Show Invoice
                                                             </a>
+                                                            @endcan
 
-                                                            @if($total != $paidAmount)
+                                                            @can('sales.pay-due')
+                                                                @if($total != $paidAmount)
                                                                 <a href="{{ route('purchase.pay-due', $sp->id) }}" class="dropdown-item" title="Pay Due">
                                                                     <i class="feather icon-dollar-sign"></i> Due Pay
                                                                 </a>
-                                                            @endif
+                                                                @endif
+                                                            @endcan
 
+                                                            @can('purchase.returnPurchase')
                                                             <a href="{{ route('purchase.returnPurchase', $sp->invoice_no) }}"
                                                                class="dropdown-item" title="Return">
                                                                 <i class="feather icon-minus-circle"></i> Return / Exchange Parts
                                                             </a>
+                                                            @endcan
                                                         </div>
                                                     </div>
                                                 </td>
@@ -143,7 +152,7 @@
                                                     @endif
                                                 </td>
                                             </tr>
-                                        @endforeach
+                                            @endforeach
                                         </tbody>
                                     </table>
                                 </div>

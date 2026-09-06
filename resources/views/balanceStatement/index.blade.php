@@ -6,13 +6,17 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('balance.create')
                 <a href="{{ route('balances.create') }}" class="btn btn-primary">
                     {{ __('Balance In') }} <i class="feather icon-plus"></i>
                 </a>
+                @endcan
 
+                @can('balance-out.create')
                 <a href="{{ route('balances-out.create') }}" class="btn btn-danger">
                     {{ __('Balance Out') }} <i class="feather icon-minus"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -79,7 +83,7 @@
                                                 <th>Balance</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                         <tbody>
                                             @php
                                                 $runningBalance = $previousBalance;
                                             @endphp
@@ -96,7 +100,7 @@
 
                                             @foreach($data as $transaction)
 
-                                                @php
+                                            @php
                                                     $isBalanceIn = in_array($transaction->type, $balanceInTypes);
 
                                                     $debit = $isBalanceIn
@@ -110,9 +114,9 @@
                                                     $runningBalance += $isBalanceIn
                                                         ? $transaction->paid_amount
                                                         : -$transaction->paid_amount;
-                                                @endphp
+                                            @endphp
 
-                                                <tr>
+                                            <tr>
                                                     <td class="text-nowrap">
                                                         {{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d M Y') }}
                                                     </td>
@@ -132,7 +136,7 @@
                                                     <td class="text-right">
                                                         <b>{{ number_format($runningBalance, 2) }}</b>
                                                     </td>
-                                                </tr>
+                                            </tr>
                                             @endforeach
                                         </tbody>
                                     </table>

@@ -18,7 +18,7 @@ class BalanceController extends Controller
         $type = $request->type;
 
 
-        $query = Transaction::with('bank');
+        $query = Transaction::where('branch_id', active_branch_id())->with('bank');
 
         if ($type && $type != 'all') {
             // Filter by a specific type
@@ -61,13 +61,17 @@ class BalanceController extends Controller
 
     public function store(Request $request)
     {
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         $data = $request->validate([
             'final_amount' => 'required|numeric|min:0',
             'transaction_date' => 'required|date',
             'payment_method' => 'required|string|in:cash,bank_transfer,cheque,due',
-            'bank_id'=> 'nullable|exists:banks,id'
+            'bank_id'=> 'nullable|required_if:payment_method,bank_transfer|exists:banks,id'
         ]);
 
         try {
@@ -88,7 +92,9 @@ class BalanceController extends Controller
                 'status' => 'completed',
                 'created_by' => auth()->id(),
                 'current_balance' => $balance->balance,
+                'branch_id' => active_branch_id(),
             ]);
+
 
             DB::commit();
 
@@ -105,14 +111,6 @@ class BalanceController extends Controller
 
     public function edit(string $id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $transaction = Transaction::findOrFail($id);
         $banks = Bank::select('id', 'bank_name', 'account_name', 'account_no')->latest()->get();
         return view('balances.edit', compact('transaction', 'banks'));
@@ -123,30 +121,24 @@ class BalanceController extends Controller
      */
     public function update(Request $request, $id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         // 🔹 Validate request data
         $data = $request->validate([
             'final_amount' => 'required|numeric|min:0',
             'transaction_date' => 'required|date',
             'payment_method' => 'required|string|in:cash,bank_transfer,cheque,due',
-            'bank_id' => 'nullable|exists:banks,id',
+            'bank_id' => 'nullable|required_if:payment_method,bank_transfer|exists:banks,id',
         ]);
 
         try {
             DB::beginTransaction();
             // 🔹 Find existing transaction
             $transaction = Transaction::where('type', 'balance_add')->findOrFail($id);
-
-            $currentBalance = $transaction->current_balance;
 
             $oldAmount = $transaction->paid_amount;
             $newAmount = $data['final_amount'];
@@ -158,7 +150,6 @@ class BalanceController extends Controller
             if ($difference != 0) {
                 $balance->increment('balance', $difference);
                 $balance->refresh();
-                $currentBalance = $balance->balance;
             }
 
             // 🔹 Update the transaction record
@@ -169,7 +160,7 @@ class BalanceController extends Controller
                 'payment_method' => $data['payment_method'],
                 'bank_id' => $data['bank_id'],
                 'updated_by' => auth()->id(),
-                'current_balance' => $currentBalance,
+                'current_balance' => $balance->balance,
             ]);
 
             DB::commit();
@@ -184,8 +175,11 @@ class BalanceController extends Controller
 
 
     public function getBalance(){
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
-        $balance->refresh();
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         return response()->json([
             'status' => 'true',
@@ -205,10 +199,14 @@ class BalanceController extends Controller
             $transaction = Transaction::where('type', 'balance_add')->findOrFail($id);
 
             // 🔹 Reverse the added balance
-            $balance = Balance::firstOrCreate([], ['balance' => 0]);
+            $balance = Balance::withoutGlobalScopes()
+                                ->firstOrCreate(
+                                    ['branch_id' => active_branch_id()],
+                                    ['balance' => 0]
+                                );
 
             if ($balance && $transaction->paid_amount > 0) {
-                $balance->decrement('balance', $transaction->paid_amount);
+                $balance->decrement('balance', $transaction->paid_amount ?? 0);
             }
 
             // 🔹 Delete the transaction record

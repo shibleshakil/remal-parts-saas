@@ -6,9 +6,11 @@
     <div class="content-header row">
         <div class="content-header-left col-md-6 col-12 mb-1">
             <h3 class="content-header-title">
+                @can('supplier.create')
                 <a href="{{ route('supplier.create') }}" class="btn btn-primary">
                     {{ __('Add Supplier') }} <i class="feather icon-plus"></i>
                 </a>
+                @endcan
             </h3>
         </div>
         <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
@@ -91,31 +93,36 @@
                                                         </button>
                                                         <div class="dropdown-menu arrow">
 
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @can('supplier.edit')
                                                             <a href="{{ route('supplier.edit', $data->id) }}"
                                                                 class="dropdown-item" title="Edit">
                                                                 <i class="fa fa-pencil"></i> Edit
                                                             </a>
-                                                            @endif
+                                                            @endcan
 
-                                                            @if( $data->due_amount > 0 )
-                                                            <a href="{{ route('supplier.payForm', $data->id) }}"
-                                                                class="dropdown-item" title="Pay">
-                                                                <i class="feather icon-dollar-sign"></i> Pay
-                                                            </a>
-                                                            @endif
-                                                            
-                                                            @if ( \App\Helpers\CommonHelper::userHasAccess() )
+                                                            @can('supplier.payForm')
+                                                                @if( $data->due_amount > 0 )
+                                                                <a href="{{ route('supplier.payForm', $data->id) }}"
+                                                                    class="dropdown-item" title="Pay">
+                                                                    <i class="feather icon-dollar-sign"></i> Pay
+                                                                </a>
+                                                                @endif
+                                                            @endcan
+
+
+                                                            @can('supplier.delete')
                                                             <button type="button" class="dropdown-item" title="Delete"
                                                                 onclick="deleteData('{{ route('supplier.delete', $data->id) }}')">
                                                                 <i class="fa fa-trash"></i> Delete
                                                             </button>
-                                                            @endif
+                                                            @endcan
 
+                                                            @can('supplier.transactions')
                                                             <a href="{{ route('supplier.transactions', $data->id) }}" class="dropdown-item" title="Transections">
                                                                 <i class="feather icon-list"></i>
                                                                 Transections
                                                             </a>
+                                                            @endcan
                                                         </div>
                                                     </div>
                                                 </td>

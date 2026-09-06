@@ -57,6 +57,7 @@ class SparePartsController extends Controller
 
         return view('spare-parts.index', ['datas' => $parts, 'sl' => $sl]);
     }
+    
 
     public function invoiceList(Request $request){
         $query = PurchaseLines::query();
@@ -88,6 +89,7 @@ class SparePartsController extends Controller
         return view('spare-parts.invoice_list', ['datas' => $parts]);
     }
 
+
     public function invoice($invoice_no){
         $data = PurchaseLines::where('invoice_no', $invoice_no)
         ->with(['vehicleDetail', 'transaction'])
@@ -95,6 +97,7 @@ class SparePartsController extends Controller
 
         return view('spare-parts.invoice', ['invoice' => $data]);
     }
+
 
     public function searchParts(Request $request)
     {
@@ -127,6 +130,7 @@ class SparePartsController extends Controller
         return view('spare-parts.search_products', ['datas' => $parts, 'sl' => $sl]);
     }
 
+
     public function print(Request $request)
     {
         $query = VehicleDetails::whereNull('vehicle_id')->with(['saleDetails', 'purchaseLines']);
@@ -147,6 +151,8 @@ class SparePartsController extends Controller
 
         return view('spare-parts.print', compact('datas', 'title'));
     }
+
+
     public function export(Request $request)
     {
         $search = $request->search ?? null;
@@ -157,6 +163,7 @@ class SparePartsController extends Controller
         // Normal download
         return Excel::download(new SparePartsExport($search), 'spare_parts.xlsx');
     }
+
 
     public function searchPartsPrint(Request $request)
     {
@@ -176,6 +183,7 @@ class SparePartsController extends Controller
 
         return view('spare-parts.print', compact('datas', 'title'));
     }
+
     public function searchPartsExport(Request $request)
     {
         $search = $request->search ?? null;
@@ -197,7 +205,11 @@ class SparePartsController extends Controller
 
     public function store(Request $request)
     {
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         if ($request->paid_amount > $balance->balance) {
             if ($request->ajax()) {
@@ -248,33 +260,35 @@ class SparePartsController extends Controller
             ]);
 
             // update Balance
-            $balance->decrement('balance', $validated['paid_amount']??0);
+            $balance->decrement('balance', $validated['paid_amount'] ?? 0);
             $balance->refresh();
 
+            $invoiceNo = '';
             if ($validated['parts_name']) {
                 $year = date('Y');
                 $count = PurchaseLines::withTrashed()
                     ->whereYear('purchase_date', $year)
                     ->count() + 1;
 
-                $invoiceNo = 'SP' . $year . $count;
+                $invoiceNo = 'SP' . $year . $count .'-B' . active_branch_id();
             }
 
             $transaction = Transaction::create([
-                'trxid'            => 'SP-' . uniqid(),
-                'type'             => 'spare_part_purchase',
-                'transaction_date' => $validated['date'],
-                'final_amount'     => round($validated['total_parts_price'], 2),
-                'status'           => $validated['total_parts_price'] > $validated['paid_amount'] ? 'partially_paid' : 'paid',
-                'note'             => $validated['note']??null,
-                'created_by'       => auth()->id() ?? null,
-                'supplier_id'      => $validated['supplier_id'],
-                'payment_method'   => $validated['payment_method'],
-                'bank_id'          => $validated['bank_id'],
-                'paid_amount'      => $validated['paid_amount'],
-                'current_balance'  => $balance->balance,
-                'vehicle_details_id' => $sparePart->id,
+                'trxid'               => 'SP-' . uniqid(),
+                'type'                => 'spare_part_purchase',
+                'transaction_date'    => $validated['date'],
+                'final_amount'        => round($validated['total_parts_price'], 2),
+                'status'              => $validated['paid_amount'] == 0 ? 'unpaid' : ($validated['paid_amount'] < $validated['total_parts_price'] ? 'partially_paid' : 'paid'),
+                'note'                => $validated['note']??null,
+                'created_by'          => auth()->id() ?? null,
+                'supplier_id'         => $validated['supplier_id'],
+                'payment_method'      => $validated['payment_method'],
+                'bank_id'             => $validated['bank_id'],
+                'paid_amount'         => $validated['paid_amount'],
+                'current_balance'     => $balance->balance,
+                'vehicle_details_id'  => $sparePart->id,
                 'purchase_invoice_no' => $invoiceNo,
+                'branch_id'           => active_branch_id(),
             ]);
 
             PurchaseLines::create([
@@ -283,9 +297,10 @@ class SparePartsController extends Controller
                 'target_sell_price' => $validated['target_sell_price'] ?? null,
                 'quantity'          => $validated['parts_quantity'],
                 'unit_price'        => round($validated['unit_price'], 2),
-                // 'purchase_date'     => $validated['date'],
+                'purchase_date'     => $validated['date'],
                 'supplier_id'       => $validated['supplier_id'],
-                'invoice_no'       => $invoiceNo,
+                'invoice_no'        => $invoiceNo,
+                'branch_id'         => active_branch_id(),
             ]);
 
 
@@ -335,14 +350,6 @@ class SparePartsController extends Controller
 
     public function edit($id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $spareParts = VehicleDetails::with('purchaseLines', 'purchaseLines.transaction')->findOrFail($id);
         $carNames = VehicleDetails::pluck('car_name')->unique();
         $suppliers = Supplier::select('id','name')->get();
@@ -353,16 +360,11 @@ class SparePartsController extends Controller
 
     public function update(Request $request, $id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         $totalPaid = array_sum($request->paid_amount ?? []);
         $totalPrevPaid = array_sum($request->old_paid_amount ?? []);
@@ -429,7 +431,7 @@ class SparePartsController extends Controller
                     'payment_method'   => $validated['payment_method'][$index],
                     'bank_id'          => $validated['bank_id'][$index] ?? null,
                     'paid_amount'      => $validated['paid_amount'][$index],
-                    'status'           => $validated['total_parts_price'][$index] > $validated['paid_amount'][$index] ? 'partially_paid' : 'paid',
+                    'status'           => ($validated['paid_amount'][$index] ?? 0) == 0 ? 'unpaid' : (($validated['paid_amount'][$index] ?? 0) < ($validated['total_parts_price'][$index] ?? 0) ? 'partially_paid' : 'paid'),
                     'current_balance' => $balance->balance,
                 ]);
                 // Update purchase line
@@ -441,8 +443,6 @@ class SparePartsController extends Controller
                     'target_sell_price' => $validated['target_sell_price'][$index] ?? null,
                     'supplier_id'       => $validated['supplier_id'][$index],
                 ]);
-
-
             }
 
             DB::commit();
@@ -457,15 +457,11 @@ class SparePartsController extends Controller
 
     public function delete($id)
     {
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
         $selledPart= SaleDetails::where('item_id', $id)->get();
 
         if (!count($selledPart) == 0) {

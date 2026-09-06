@@ -59,12 +59,18 @@
                                                 <a href="{{ route('productSearch.index') }}" class="btn btn-md btn-secondary">
                                                     <i class="fa fa-undo"></i> {{ __('Reset') }}
                                                 </a>
+                                                
+                                                @can('productSearch.export')
                                                 <a href="{{ route('productSearch.export', request()->query()) }}" class="btn btn-md btn-success">
                                                     <i class="fa fa-file-excel"></i> {{ __('Export') }}
                                                 </a>
+                                                @endcan
+
+                                                @can('productSearch.print')
                                                 <a href="{{ route('productSearch.print', request()->query()) }}" target="_blank" class="btn btn-md btn-info">
                                                     <i class="fa fa-print"></i> {{ __('Print') }}
                                                 </a>
+                                                @endcan
                                             </div>
                                         </form>
 

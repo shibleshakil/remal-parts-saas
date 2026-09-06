@@ -2,23 +2,31 @@
 @section('title', 'Supplier Due Payment')
 
 @section('content')
-<div class="container mt-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>Supplier Due Payment</h3>
-        <a href="{{ route('supplier.index') }}" class="btn btn-outline-primary">
-            <i class="fa fa-list"></i> Supplier List
-        </a>
+<div class="content-wrapper">
+    <div class="content-header row">
+        <div class="content-header-left col-md-6 col-12 mb-1">
+            <h3 class="content-header-title">
+                @can('supplier.index')
+                <a href="{{ route ('supplier.index')}}" class="btn btn-primary">
+                    {{ __('Supplier List') }} <i class="feather icon-eye"></i>
+                </a>
+                @endcan
+            </h3>
+        </div>
+        <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
+            <div class="breadcrumb-wrapper col-12">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('supplier.index') }}">Supplier</a></li>
+                    <li class="breadcrumb-item active">Supplier Due Payment</li>
+                </ol>
+            </div>
+        </div>
     </div>
 
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('supplier.index') }}">Supplier</a></li>
-            <li class="breadcrumb-item active">Supplier Due Payment</li>
-        </ol>
-    </nav>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Supplier Due Payment</h3>
+    </div>
 
     <!-- Form -->
     <div class="card">
@@ -102,16 +110,6 @@
                     <button type="submit" class="btn btn-primary">Submit Payment</button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="invoiceModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-body" id="invoiceContent">
-                <!-- Invoice will be loaded here -->
-            </div>
         </div>
     </div>
 </div>
@@ -247,67 +245,6 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             alert('Please enter valid payment amounts for all selected invoices.');
         }
-
-
-        // 2) Submit handler (AJAX)
-        e.preventDefault();
-        const formEl = this;
-        let formData = new FormData(formEl);
-
-        // remove previous errors inside this form
-        $(form).find('.text-danger').remove();
-        const submitBtn = $(this).find('button[type="submit"]');
-
-
-        $.ajax({
-            url: $(form).attr('action'),
-            type: 'POST',
-            data: formData,
-            contentType: false,
-            processData: false,
-            complete: function() {
-                submitBtn.removeAttr('disabled');
-                submitBtn.find('.spinner-border').remove();
-            },
-            success: function(response) {
-                if (response.status === 'success') {
-                    // Inject invoice into modal
-                    $('#invoiceContent').html(response.view);
-
-                    // Show the modal
-                    $('#invoiceModal').modal('show');
-
-                    // After modal is shown, trigger print
-                    $('#invoiceModal').on('shown.bs.modal', function() {
-                        setTimeout(function() {
-                            // Print only the modal content
-                            const printContents = document.getElementById('invoiceContent').innerHTML;
-                            const originalContents = document.body.innerHTML;
-
-                            // Replace page content with invoice temporarily
-                            document.body.innerHTML = printContents;
-                            window.print();
-
-                            // Restore original page content
-                            document.body.innerHTML = originalContents;
-                            // Close modal and redirect after print
-                            $('#invoiceModal').modal('hide');
-                            window.location.href = "{{ route('supplier.index') }}";
-                        }, 500);
-                    });
-                }
-            },
-            error: function(xhr) {
-                submitBtn.removeAttr('disabled');
-                submitBtn.find('.spinner-border').remove();
-
-                Swal.fire({
-                    title: "Error",
-                    text: "Something went wrong.",
-                    icon: "error"
-                });
-            }
-        });
     });
 });
 </script>

@@ -97,8 +97,9 @@ class BankController extends Controller
             'account_name' => 'required|string|max:255',
             'account_no' => 'required|string|max:255|unique:banks,account_no',
             'branch' => 'nullable|string|max:255',
-
         ]);
+
+
         Bank::create($data);
 
         return redirect()->route('banks.index')->with('success', 'Bank created successfully.');
@@ -117,15 +118,6 @@ class BankController extends Controller
      */
     public function edit(string $id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $bank = Bank::findOrFail($id);
         return view('banks.edit', compact('bank'));
     }
@@ -135,21 +127,11 @@ class BankController extends Controller
      */
     public function update(Request $request, string $id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $data  = $request->validate([
             'bank_name' => 'required|string|max:255',
             'account_name' => 'required|string|max:255',
             'account_no' => 'required|string|max:255|unique:banks,account_no,'.$id,
             'branch' => 'nullable|string|max:255',
-
         ]);
         $bank = Bank::findOrFail($id);
         $bank->update($data);
@@ -161,15 +143,6 @@ class BankController extends Controller
      */
     public function destroy(string $id)
     {
-
-        if(!(\App\Helpers\CommonHelper::userHasAccess())){
-            if(request()->ajax()){
-                return response()->json(['message' => 'Sorry, you’re not authorized to access this section.'], 403);
-            }
-
-            return back()->with('error', 'Sorry, you’re not authorized to access this section.');
-        }
-
         $bank = Bank::findOrFail($id);
         $bank->delete();
         return response()->json([

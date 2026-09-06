@@ -2,23 +2,34 @@
 @section('title', 'Customer Direct Payment')
 
 @section('content')
-<div class="container mt-4">
+
+<div class="content-wrapper">
+    <div class="content-header row">
+        <div class="content-header-left col-md-6 col-12 mb-1">
+            <h3 class="content-header-title">
+                 @can('customer.index')
+                <a href="{{ route('customer.index') }}" class="btn btn-outline-primary">
+                    <i class="fa fa-list"></i> Customer List
+                </a>
+                @endcan
+            </h3>
+        </div>
+        <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
+            <div class="breadcrumb-wrapper col-12">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('customer.index') }}">Customer</a></li>
+                    <li class="breadcrumb-item active">Customer Direct Payment</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Customer Direct Payment</h3>
-        <a href="{{ route('customer.index') }}" class="btn btn-outline-primary">
-            <i class="fa fa-list"></i> Customer List
-        </a>
     </div>
 
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('customer.index') }}">Customer</a></li>
-            <li class="breadcrumb-item active">Customer Direct Payment</li>
-        </ol>
-    </nav>
 
     <!-- Form -->
     <div class="card">

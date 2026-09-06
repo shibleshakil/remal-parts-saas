@@ -2,23 +2,32 @@
 @section('title', 'Customer Due Payment')
 
 @section('content')
-<div class="container mt-4">
+<div class="content-wrapper">
+    <div class="content-header row">
+        <div class="content-header-left col-md-6 col-12 mb-1">
+            <h3 class="content-header-title">
+                 @can('customer.index')
+                <a href="{{ route('customer.index') }}" class="btn btn-outline-primary">
+                    <i class="fa fa-list"></i> Customer List
+                </a>
+                @endcan
+            </h3>
+        </div>
+        <div class="content-header-right breadcrumbs-right breadcrumbs-top col-md-6 col-12">
+            <div class="breadcrumb-wrapper col-12">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('customer.index') }}">Customer</a></li>
+                    <li class="breadcrumb-item active">Customer Due Payment</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3>Customer Due Payment</h3>
-        <a href="{{ route('customer.index') }}" class="btn btn-outline-primary">
-            <i class="fa fa-list"></i> Customer List
-        </a>
     </div>
-
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('customer.index') }}">Customer</a></li>
-            <li class="breadcrumb-item active">Customer Due Payment</li>
-        </ol>
-    </nav>
 
     <!-- Form -->
     <div class="card">
@@ -36,13 +45,13 @@
                         @php
                             $oldSelectedInvoices = old('select_invoice', []);
                         @endphp
-                        @foreach($unpaidInvoices as $sale)
+                        @foreach($unpaidInvoices as $invoice)
                             @php
-                                $due = $sale->final_amount - $sale->paid_amount;
-                                $selected = in_array($sale->id, $oldSelectedInvoices) ? 'selected' : '';
+                                $due = $invoice->final_amount - $invoice->paid_amount;
+                                $selected = in_array($invoice->id, $oldSelectedInvoices) ? 'selected' : '';
                             @endphp
-                            <option value="{{ $sale->id }}" data-id="{{ $sale->id }}" data-invoice_no="{{ $sale->invoice_no }}" data-due="{{ $due }}" {{ $selected }}>
-                                Invoice #{{ $sale->invoice_no }} (Due: {{ number_format($due, 2) }})
+                            <option value="{{ $invoice->id }}" data-id="{{ $invoice->id }}" data-due="{{ $due }}" {{ $selected }}>
+                                Invoice #{{ $invoice->id }} (Due: {{ number_format($due, 2) }})
                             </option>
                         @endforeach
                     </select>
@@ -56,7 +65,7 @@
                     <table class="table table-bordered" id="invoice_table">
                         <thead>
                             <tr>
-                                <th>Invoice Number</th>
+                                <th>Invoice ID</th>
                                 <th>Due Amount</th>
                                 <th>Payment Amount</th>
                                 <th>Action</th>
@@ -110,18 +119,6 @@
         </div>
     </div>
 </div>
-
-
-<div class="modal fade" id="invoiceModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-body" id="invoiceContent">
-                <!-- Invoice will be loaded here -->
-            </div>
-        </div>
-    </div>
-</div>
-
 @endsection
 
 @section('script')
@@ -143,14 +140,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const addedInvoices = {};
 
     // Function to add invoice row
-    function addInvoiceRow(invoiceId, invoiceNo, due) {
+    function addInvoiceRow(invoiceId, due) {
         if (addedInvoices[invoiceId]) return; // prevent duplicates
         addedInvoices[invoiceId] = true;
 
         const row = document.createElement('tr');
         row.setAttribute('data-id', invoiceId);
         row.innerHTML = `
-            <td>#${invoiceNo}<input type="hidden" name="invoices[${invoiceId}][id]" value="${invoiceId}"></td>
+            <td>${invoiceId}<input type="hidden" name="invoices[${invoiceId}][id]" value="${invoiceId}"></td>
             <td>${due}<input type="hidden" name="invoices[${invoiceId}][due]" value="${due}"></td>
             <td>
                 <input type="number" class="form-control" name="invoices[${invoiceId}][payment]"
@@ -166,9 +163,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Load initially selected options (for old input)
     Array.from(selectInvoice.selectedOptions).forEach(option => {
         const invoiceId = option.getAttribute('data-id');
-        const invoiceNo = option.getAttribute('data-invoice_number');
         const due = parseFloat(option.getAttribute('data-due') || 0).toFixed(2);
-        if (invoiceId && due > 0) addInvoiceRow(invoiceId, invoiceNo, due);
+        if (invoiceId && due > 0) addInvoiceRow(invoiceId, due);
     });
 
     // On select change, refresh table rows
@@ -186,9 +182,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Add new selected rows
         Array.from(selectInvoice.selectedOptions).forEach(option => {
             const invoiceId = option.getAttribute('data-id');
-            const invoiceNo = option.getAttribute('data-invoice_no');
             const due = parseFloat(option.getAttribute('data-due') || 0).toFixed(2);
-            if (invoiceId && due > 0) addInvoiceRow(invoiceId, invoiceNo, due);
+            if (invoiceId && due > 0) addInvoiceRow(invoiceId, due);
         });
     });
 
@@ -217,7 +212,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Validate payment amounts on submit
     const form = document.getElementById('paymentForm');
     form.addEventListener('submit', function (e) {
-
         const paymentInputs = tableBody.querySelectorAll('input[name$="[payment]"]');
 
         // Check if any invoices selected
@@ -244,66 +238,6 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             alert('Please enter valid payment amounts for all selected invoices.');
         }
-
-        // 2) Submit handler (AJAX)
-        e.preventDefault();
-        const formEl = this;
-        let formData = new FormData(formEl);
-
-        // remove previous errors inside this form
-        $(form).find('.text-danger').remove();
-        const submitBtn = $(this).find('button[type="submit"]');
-
-
-        $.ajax({
-            url: $(form).attr('action'),
-            type: 'POST',
-            data: formData,
-            contentType: false,
-            processData: false,
-            complete: function() {
-                submitBtn.removeAttr('disabled');
-                submitBtn.find('.spinner-border').remove();
-            },
-            success: function(response) {
-                if (response.status === 'success') {
-                    // Inject invoice into modal
-                    $('#invoiceContent').html(response.view);
-
-                    // Show the modal
-                    $('#invoiceModal').modal('show');
-
-                    // After modal is shown, trigger print
-                    $('#invoiceModal').on('shown.bs.modal', function() {
-                        setTimeout(function() {
-                            // Print only the modal content
-                            const printContents = document.getElementById('invoiceContent').innerHTML;
-                            const originalContents = document.body.innerHTML;
-
-                            // Replace page content with invoice temporarily
-                            document.body.innerHTML = printContents;
-                            window.print();
-
-                            // Restore original page content
-                            document.body.innerHTML = originalContents;
-                            // Close modal and redirect after print
-                            $('#invoiceModal').modal('hide');
-                            window.location.href = "{{ route('customer.index') }}";
-                        }, 500);
-                    });
-                }
-            },
-            error: function(xhr) {
-                submitBtn.removeAttr('disabled');
-                submitBtn.find('.spinner-border').remove();
-
-                Swal.fire({
-                    title: "Error",
-                    text: "Something went wrong.",
-                    icon: "error"
-                });
-            }
-        });
     });
 
     function calculteTotalPaidAmount() {
