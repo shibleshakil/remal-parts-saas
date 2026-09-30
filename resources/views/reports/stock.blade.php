@@ -397,7 +397,7 @@
             ordering: false,
             buttons: [{
                     extend: 'excelHtml5',
-                    title: 'Stock Report'
+                    title: 'Stock Report',
                     footer: true,
                     exportOptions: {
                         columns: ':visible'

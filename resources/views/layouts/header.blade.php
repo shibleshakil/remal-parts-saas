@@ -53,6 +53,12 @@
                                 </select>
                             </form>
                         </li>
+                        @else
+                        <li class="form-group mb-0 d-flex align-items-center justify-content-center">
+                            <span class="font-weight-bolder border border p-1 rounded">
+                                {{ branches()->where('id', session('active_branch_id', auth()->user()->branch_id))->first()->name}}
+                            </span>
+                        </li>
                         @endif
                         <li class="dropdown dropdown-user nav-item"><a class="dropdown-toggle nav-link dropdown-user-link"
                                 href="#" data-toggle="dropdown">

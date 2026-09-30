@@ -6,6 +6,7 @@
     <div class="content-header row">
     </div>
     <div class="content-body">
+        @include('partials.session_message')
         <!-- <div id="stock-card" class="d-flex flex-wrap justify-content-between">
             <div class="card flex-fill m-1" style="min-width: 180px;">
                 <div class="card-content">

@@ -89,6 +89,15 @@
                                 </tr>
                                 @endforeach
                             </tbody>
+                            @if ($partsReturnLists->isNotEmpty())
+                            <tfoot>
+                                <tr class="font-weight-bold">
+                                    <td colspan="4" class="text-right">Total</td>
+                                    <td class="text-right">{{ number_format($totalQuantity ?? 0, 2) }}</td>
+                                    <td class="text-right">{{ number_format($totalReturnAmount ?? 0, 2) }}</td>
+                                </tr>
+                            </tfoot>
+                            @endif
                         </table>
                     </div>
                     <div>

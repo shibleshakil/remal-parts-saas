@@ -2,28 +2,22 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
+     *
+     * MasterSeeder creates: Main Branch, Super Admin (branchless = global
+     * view), and the Super Admin role with one permission per named route.
+     * Re-run after any route change to re-sync permissions + labels:
+     *   php artisan db:seed
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
-
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
-
         $this->call([
-            // run branch, than userRolePermission
-            // CountrySeeder::class,
-            // BranchSeeder::class,
-            UserRolePermissionSeeder::class,
+            MasterSeeder::class,
         ]);
     }
 }

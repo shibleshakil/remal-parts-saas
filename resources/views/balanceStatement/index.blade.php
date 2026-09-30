@@ -76,11 +76,11 @@
                                         class="table table-striped table-bordered reportTable">
                                         <thead>
                                             <tr class="text-center">
-                                                <th>Date</th>
-                                                <th>Purpose</th>
-                                                <th>Balance In</th>
-                                                <th>Balance Out</th>
-                                                <th>Balance</th>
+                                                <th class="text-left">Date</th>
+                                                <th class="text-left">Purpose</th>
+                                                <th class="text-right">Balance In</th>
+                                                <th class="text-right">Balance Out</th>
+                                                <th class="text-right">Balance</th>
                                             </tr>
                                         </thead>
                                          <tbody>
@@ -89,10 +89,10 @@
                                             @endphp
 
                                             <tr>
+                                                <td class="text-left">Previous Balance</td>
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
-                                                <td class="text-right">Previous Balance</td>
                                                 <td class="text-right">
                                                     <b>{{ number_format($runningBalance, 2) }}</b>
                                                 </td>

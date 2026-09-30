@@ -22,8 +22,17 @@ return new class extends Migration
     public function up(): void
     {
         foreach ($this->tables as $tbl) {
-            Schema::table($tbl, function (Blueprint $table) {
+            if (DB::getDriverName() === 'sqlite') {
+                // SQLite rebuilds the table on dropColumn, dropping the
+                // inline FK automatically; dropForeign is unsupported here.
+                Schema::table($tbl, function (Blueprint $table) {
+                    $table->dropColumn('branch_id');
+                });
 
+                continue;
+            }
+
+            Schema::table($tbl, function (Blueprint $table) {
                 // drop foreign key correctly
                 $table->dropForeign(['branch_id']);
 

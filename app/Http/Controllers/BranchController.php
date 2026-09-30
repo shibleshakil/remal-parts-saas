@@ -206,12 +206,16 @@ class BranchController extends Controller
     // Switch branch
     public function switch(Request $request)
     {
-        $branchId = $request->branch_id;
+        $validated = $request->validate([
+            'branch_id' => ['required', 'integer', 'exists:branches,id'],
+        ]);
 
-        if (isSuperAdmin()) {
-            session(['active_branch_id' => $branchId]);
+        if (!isSuperAdmin()) {
+            return back()->with('error', 'You are not allowed to switch branches.');
         }
 
-        return back();
+        session(['active_branch_id' => (int) $validated['branch_id']]);
+
+        return back()->with('success', 'Branch switched successfully.');
     }
 }

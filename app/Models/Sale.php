@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToBranch;
 use App\Models\Scopes\BranchScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sale extends Model
 {
-    use HasFactory,SoftDeletes;
+    use HasFactory,SoftDeletes, BelongsToBranch;
     protected $fillable = [
         'vehicle_id', 'customer_id', 'date', 'payment_method','invoice_no','bank_id','branch_id', 'vat', 'vat_amount', 'vat_type',
         'total_cost', 'discount_amount', 'discount_type', 'final_amount','paid_amount','item_purchase_amount','send_email'

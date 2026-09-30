@@ -102,7 +102,7 @@
 
 
             {{-- Purchase --}}
-            @canany(['purchase.purchaseVehicle', 'vehicle.index', 'purchase.create', 'purchase.index'])
+            @canany(['purchase.purchaseVehicle', 'vehicle.index', 'purchase.create', 'purchase.index', 'purchase.parts-return.index'])
             <li class="nav-item has-sub {{ Request::routeIs('purchase.*') || Request::routeIs('vehicle.*') ? 'active open' : '' }}">
                 <a href="#" aria-expanded="{{ Request::routeIs('purchase.*') || Request::routeIs('vehicle.*') ? 'true' : 'false' }}">
                     <i class="fa fa-id-card"></i>
@@ -145,6 +145,16 @@
                             aria-current="{{ Request::routeIs('purchase.index') ? 'page' : 'false' }}">
                             <i class="feather icon-list"></i>
                             <span class="menu-title">Purchase List</span>
+                        </a>
+                    </li>
+                    @endcan
+
+                    @can('purchase.parts-return.index')
+                    <li class="{{ Request::routeIs('purchase.parts-return.index') ? 'active' : '' }}">
+                        <a href="{{ route('purchase.parts-return.index') }}"
+                            aria-current="{{ Request::routeIs('purchase.parts-return.index') ? 'page' : 'false' }}">
+                            <i class="fa fa-undo"></i>
+                            <span class="menu-title">Purchase Return List</span>
                         </a>
                     </li>
                     @endcan

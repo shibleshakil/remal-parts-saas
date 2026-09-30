@@ -256,12 +256,12 @@ class PurchaseController extends Controller
                                 ['balance' => 0]
                             );
 
-        if ($request->paid_amount > $balance->balance) {
+        if ($request->payment_amount > $balance->balance) {
             if ($request->ajax()) {
                 return response()->json([
                     "message"=> "Balance exceeds, please check available balance.",
                     'errors' => [
-                        'paid_amount' => 'Balance exceeds, please check available balance.'
+                        'payment_amount' => 'Balance exceeds, please check available balance.'
                     ]
                 ], 403);
             }
@@ -282,13 +282,18 @@ class PurchaseController extends Controller
         try {
             DB::beginTransaction();
 
-            $purchase = PurchaseLines::where('id', $id)->with('transactions')->first();
+            $purchase = PurchaseLines::lockForUpdate()->where('id', $id)->with('transactions')->first();
 
             if (!$purchase) {
+                DB::rollBack();
                 return back()->with('error', 'Purchase not found');
             }
 
             $transactions = $purchase->transactions;
+
+            if ($transactions->isEmpty()) {
+                throw new \Exception('No purchase transaction found for this invoice.');
+            }
 
             $paidAmount = $transactions->sum('paid_amount') ?? 0;
 
@@ -384,8 +389,12 @@ class PurchaseController extends Controller
 
     public function returnPurchasePost(Request $request, $invoiceNo)
     {
-        // 1. Pre-validation balance check
-        $balance = Balance::firstOrCreate([], ['balance' => 0]);
+        // 1. Pre-validation balance check (always pinned to the active branch)
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
 
         if ($request->filled('paid_amount') && $request->paid_amount > 0) {
             if ($request->paid_amount > $balance->balance) {
@@ -442,13 +451,18 @@ class PurchaseController extends Controller
             // 3. Process Return Items
             if (!empty($validated['return_items'])) {
                 foreach ($validated['return_items'] as $item) {
-                    $purchaseLine = PurchaseLines::find($item['purchase_line_id']);
-                    $supplierName = $purchaseLine->supplier->name;
+                    $purchaseLine = PurchaseLines::lockForUpdate()->find($item['purchase_line_id']);
 
                     if (!$purchaseLine || $item['quantity'] > $purchaseLine->quantity) {
-                        return response()->json([
-                            "message" => "Item not found or available quantity exceeds.",
-                        ], 422);
+                        // Throw (not return) so the open transaction rolls back.
+                        throw new \Exception("Item not found or available quantity exceeds.");
+                    }
+
+                    $supplierName = $purchaseLine->supplier?->name ?? '';
+
+                    // The returned line must belong to the invoice being returned.
+                    if ($purchaseLine->invoice_no !== $invoiceNo) {
+                        throw new \Exception("Returned item does not belong to invoice #{$invoiceNo}.");
                     }
 
                     // Add to return trace log

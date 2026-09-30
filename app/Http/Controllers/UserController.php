@@ -90,7 +90,10 @@ class UserController extends Controller
 
         if (!empty($request->password)) {
             $userData['password'] = Hash::make($request->password);
+        }else {
+            $userData['password'] = $user->password;
         }
+        
         $user->update($userData);
 
         // Sync role

@@ -66,43 +66,68 @@
                                         </div>
                                     </div>
                                 <div class="">
-                                    <table
-                                        id='supplierTable'
-                                        data-title="{{$supplier->name }}'s Transaction"
-                                        data-from="{{ request('from') ?? \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d')}}"
+                                    
+
+                                    <table id='supplierTable'
+                                        data-title="{{ $supplier->name }}'s Transaction"
+                                        data-from="{{ request('from') ?? \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d') }}"
                                         data-to="{{ request('to') ?? date('Y-m-d') }}"
-                                        class="table table-striped table-bordered" >
+                                        class="table table-striped table-bordered">
                                         <thead>
                                             <tr class="text-center">
                                                 <th class="text-center">Date</th>
                                                 <th class="text-center">Type</th>
+                                                <th class="text-center">Invoice No</th>
                                                 <th class="text-right">Amount</th>
                                                 <th class="text-right">Paid</th>
+                                                <th class="text-right">Due</th>
                                                 <th class="text-right">Balance</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @php
+                                                // Types that add to payable balance vs types that reduce it
+                                                $creditArray = ['purchase', 'spare_part_purchase', 'opening_balance', 'balance_add', 'bulk_purchase'];
+                                                $paymentArray = ['payment', 'supplier_payment', 'purchase_return'];
+
                                                 $balance = $preDue->due ?? 0;
                                             @endphp
-                                            <tr>
-                                                <td></td>
-                                                <td class="text-center">Opening Balance</td>
-                                                <td></td>
-                                                <td></td>
-                                                <td class="text-right">{{ number_format(($balance), 2) }}</td>
-                                            </tr>
+
                                             @foreach($data as $transaction)
-                                            @php
-                                                $balance + $transaction->final_amount - $transaction->paid_amount;
-                                            @endphp
-                                            <tr>
-                                                <td class="text-nowrap text-center">{{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d M Y')}}</td>
-                                                <td class="text-center">{{ $transaction->type }}</td>
-                                                <td class="text-right">{{ number_format($transaction->final_amount, 2) }}</td>
-                                                <td class="text-right">{{ number_format($transaction->paid_amount, 2) }}</td>
-                                                <td class="text-right">{{ number_format(($balance), 2) }}</td>
-                                            </tr>
+                                                @php
+                                                    $type = strtolower($transaction->type);
+                                                    $total = $transaction->final_amount ?? 0;
+                                                    $paid = $transaction->paid_amount ?? 0;
+
+                                                    if (in_array($type, $creditArray)) {
+                                                        // Purchases increase payable balance
+                                                        $due = $total - $paid;
+                                                        $balance += $due;
+                                                    } elseif (in_array($type, $paymentArray)) {
+                                                        // Payments / purchase returns reduce the payable
+                                                        // balance: paid_amount holds the value of goods or
+                                                        // cash given back to the supplier.
+                                                        $due = 0;
+                                                        $balance -= $paid;
+                                                    } else {
+                                                        // Fallback for other transaction types
+                                                        $due = $total - $paid;
+                                                        $balance += $due;
+                                                    }
+                                                @endphp
+                                                <tr>
+                                                    <td class="text-nowrap text-center">
+                                                        {{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d M Y') }}
+                                                    </td>
+                                                    <td class="text-center">{{ ucfirst($transaction->type) }}</td>
+                                                    <td class="text-center">
+                                                        {{ $transaction->purchase_invoice_no ?? ($transaction->purchase?->invoice_no ?? '-') }}
+                                                    </td>
+                                                    <td class="text-right">{{ number_format($total, 2) }}</td>
+                                                    <td class="text-right">{{ number_format($paid, 2) }}</td>
+                                                    <td class="text-right">{{ number_format($due, 2) }}</td>
+                                                    <td class="text-right">{{ number_format($balance, 2) }}</td>
+                                                </tr>
                                             @endforeach
                                         </tbody>
                                     </table>

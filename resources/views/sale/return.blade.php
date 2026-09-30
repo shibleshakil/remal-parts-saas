@@ -1092,6 +1092,19 @@
                         submitBtn.find('.spinner-border').remove();
 
                         if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                            // Runtime exceptions (stock, refund caps, branch errors) arrive as a
+                            // plain string or array — show them directly instead of per-field parsing.
+                            if (typeof xhr.responseJSON.errors === 'string' || Array.isArray(xhr.responseJSON.errors)) {
+                                Swal.fire({
+                                    title: "Error",
+                                    text: Array.isArray(xhr.responseJSON.errors)
+                                        ? xhr.responseJSON.errors.join(' ')
+                                        : xhr.responseJSON.errors,
+                                    icon: "error"
+                                });
+                                return;
+                            }
+
                             Swal.fire({
                                 title: "Error",
                                 text: "You have some error in form input field. Please check input field value.",

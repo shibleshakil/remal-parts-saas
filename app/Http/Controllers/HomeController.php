@@ -36,55 +36,25 @@ class HomeController extends Controller
 
     public function stockSummary()
     {
+        $branchCondition = '';
+        $params = [];
+
+        // Branch filtering on purchase lines (vehicle_details has no branch_id)
+        if (active_branch_id()) {
+            $branchCondition = ' AND pl.branch_id = ?';
+            $params[] = active_branch_id();
+        }
+
         $partsDetails = DB::SELECT("SELECT SUM(CASE WHEN vd.vehicle_id IS NULL THEN pl.quantity ELSE 0 END) AS parts_stock_quantity,
             SUM(CASE WHEN vd.vehicle_id IS NULL THEN pl.quantity * pl.unit_price ELSE 0 END) AS parts_stock_balance,
             SUM(CASE WHEN vd.vehicle_id IS NOT NULL THEN pl.quantity ELSE 0 END) AS vehicle_stock_quantity,
             SUM(CASE WHEN vd.vehicle_id IS NOT NULL THEN pl.quantity * pl.unit_price ELSE 0 END) AS vehicle_stock_balance
             FROM vehicle_details vd
             LEFT JOIN purchase_lines pl ON vd.id = pl.vehicle_detail_id
-            WHERE vd.deleted_at IS NULL AND pl.deleted_at IS NULL");
+            WHERE vd.deleted_at IS NULL AND pl.deleted_at IS NULL $branchCondition", $params);
 
         return response()->json(['status' => 'success', 'data' => $partsDetails]);
     }
-
-    // public function stockSummary()
-    // {
-    //     $summary = DB::select("
-    //         SELECT
-    //             SUM(CASE WHEN vehicle_id IS NULL THEN total_quantity ELSE 0 END) AS parts_stock_quantity,
-    //             SUM(CASE WHEN vehicle_id IS NULL THEN total_price ELSE 0 END) AS parts_stock_amount,
-
-    //             SUM(CASE WHEN vehicle_id IS NOT NULL THEN total_quantity ELSE 0 END) AS vehicle_stock_quantity,
-    //             SUM(CASE WHEN vehicle_id IS NOT NULL THEN total_price ELSE 0 END) AS vehicle_stock_amount
-    //         FROM (
-    //             SELECT
-    //                 vd.id,
-    //                 vd.vehicle_id,
-    //                 CASE
-    //                     WHEN vd.vehicle_id IS NOT NULL THEN CONCAT(v.name, ' - ', v.uid)
-    //                     ELSE vd.car_name
-    //                 END AS car_name,
-    //                 vd.car_model,
-    //                 SUM(pl.quantity) AS total_quantity,
-    //                 SUM(pl.quantity * pl.unit_price) AS total_price
-    //             FROM vehicle_details vd
-    //             LEFT JOIN purchase_lines pl
-    //                 ON vd.id = pl.vehicle_detail_id
-    //                 AND pl.deleted_at IS NULL
-    //             LEFT JOIN vehicles v
-    //                 ON vd.vehicle_id = v.id
-    //             WHERE vd.deleted_at IS NULL
-    //             GROUP BY vd.id, vd.uid, vd.parts_name, car_name, vd.car_model
-    //         ) AS t
-    //     ");
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $summary
-    //     ]);
-    // }
-
-
 
     public function profitSummary(Request $request)
     {

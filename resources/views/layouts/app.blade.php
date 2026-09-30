@@ -128,6 +128,13 @@
             submitBtn.attr('disabled', 'disabled');
             submitBtn.append(' <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
         })
+
+        document.addEventListener('wheel', function (e) {
+            // Target any active/focused input of type number
+            if (document.activeElement.type === 'number') {
+                e.preventDefault();
+            }
+        }, { passive: false });
     </script>
 
 

@@ -74,45 +74,63 @@
                                             <tr class="text-center">
                                                 <th>Date</th>
                                                 <th class="text-center">Type</th>
+                                                <th class="text-center">Invoice No</th>
                                                 <th class="text-right">Amount</th>
                                                 <th class="text-right">Paid</th>
                                                 <th class="text-right">Due</th>
                                                 <th class="text-right">Balance</th>
-
-
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @php
-                                                $debitArray = ['sale', 'payment','balance_add'];
+                                                $debitArray = ['sale', 'balance_add'];
                                                 $balance = $preDue->due ?? 0;
                                             @endphp
 
-                                             <tr>
+                                            <tr>
                                                 <td></td>
                                                 <td class="text-center">Opening Balance</td>
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
-                                                <td class="text-right">{{ number_format(($balance), 2) }}</td>
+                                                <td></td>
+                                                <td class="text-right">{{ number_format($balance, 2) }}</td>
                                             </tr>
 
                                             @foreach($data as $transaction)
                                                 @php
-                                                    $total = $transaction->final_amount;
-                                                    $paid = $transaction->paid_amount;
-                                                    $due = $total - $paid;
-                                                    $balance + $total - $paid;
+                                                    $type = strtolower($transaction->type);
+                                                    $total = $transaction->final_amount ?? 0;
+                                                    $paid = $transaction->paid_amount ?? 0;
 
+                                                    if (in_array($type, $debitArray)) {
+                                                        // Sales / Additions increase balance
+                                                        $due = $total - $paid;
+                                                        $balance += $due;
+                                                    } elseif ($type === 'payment') {
+                                                        // Payments reduce balance (amount is 0, paid is the payment value)
+                                                        $due = 0;
+                                                        $balance -= $paid;
+                                                    } elseif ($type === 'refund') {
+                                                        // Cash refunded for returned goods — the sale row is
+                                                        // already recalculated on return, so the refund must
+                                                        // not change the due balance again.
+                                                        $due = 0;
+                                                    } else {
+                                                        // Fallback for other transaction types
+                                                        $due = $total - $paid;
+                                                        $balance += $due;
+                                                    }
                                                 @endphp
-                                            <tr>
-                                                <td class="text-nowrap text-center">{{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d M Y')}}</td>
-                                                <td class="text-center">{{ $transaction->type }}</td>
-                                                <td class="text-right">{{ number_format($total, 2)}}</td>
-                                                <td class="text-right">{{ number_format($paid, 2) }}</td>
-                                                <td class="text-right">{{ number_format($due, 2) }}</td>
-                                                <td class="text-right">{{ number_format($balance, 2) }}</td>
-                                            </tr>
+                                                <tr>
+                                                    <td class="text-nowrap text-center">{{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d M Y') }}</td>
+                                                    <td class="text-center">{{ ucfirst($transaction->type) }}</td>
+                                                    <td class="text-center">{{ $transaction->sale?->invoice_no ?? ($transaction->invoice_no ?? '-') }}</td>
+                                                    <td class="text-right">{{ number_format($total, 2) }}</td>
+                                                    <td class="text-right">{{ number_format($paid, 2) }}</td>
+                                                    <td class="text-right">{{ number_format($due, 2) }}</td>
+                                                    <td class="text-right">{{ number_format($balance, 2) }}</td>
+                                                </tr>
                                             @endforeach
                                         </tbody>
                                     </table>

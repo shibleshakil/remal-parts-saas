@@ -74,14 +74,37 @@ class StockMovementController extends Controller
     {
         $datas =$request->validate([
             'from_branch_id' => 'required|exists:branches,id',
-            'to_branch_id' => 'required|exists:branches,id',
+            'to_branch_id' => 'required|exists:branches,id|different:from_branch_id',
             'parts_ids' => 'required|array',
             'parts_ids.*' => 'exists:purchase_lines,id',
             'quantities' => 'required|array',
             'quantities.*' => 'required|integer|min:1',
         ]);
 
+        // Pre-flight: verify every line exists, belongs to the sending branch
+        // and holds enough stock BEFORE opening the transaction, so a failure
+        // never leaves partial writes behind.
+        foreach ($datas['parts_ids'] as $index => $partId) {
+            $quantity = (int) $datas['quantities'][$index];
+
+            $part = PurchaseLines::withoutGlobalScope(BranchScope::class)->lockForUpdate()->find($partId);
+
+            if (!$part) {
+                return redirect()->back()->with('error', 'Invalid part ID.');
+            }
+
+            if ((int) $part->branch_id !== (int) $datas['from_branch_id']) {
+                return redirect()->back()->with('error', 'Part ' . ($part->vehicleDetail?->parts_name ?? $partId) . ' does not belong to the sending branch.');
+            }
+
+            if ($quantity > $part->quantity) {
+                return redirect()->back()->with('error', 'Quantity for part ID ' . $part->vehicleDetail?->parts_name . ' exceeds available stock.');
+            }
+        }
+
         DB::beginTransaction();
+
+        try {
 
         $totalCost = 0;
 
@@ -157,18 +180,10 @@ class StockMovementController extends Controller
         foreach ($datas['parts_ids'] as $index => $partId) {
             $quantity = $datas['quantities'][$index];
 
-            $part = PurchaseLines::withoutGlobalScope(BranchScope::class)->find($partId);
+            // Locked fetch (checks already passed in pre-flight above)
+            $part = PurchaseLines::withoutGlobalScope(BranchScope::class)->lockForUpdate()->findOrFail($partId);
 
             $totalCost += $quantity * ($part->unit_price ?? 0);
-
-            if (!$part) {
-                return redirect()->back()->with('error', 'Invalid part ID.');
-            }
-
-            if ($quantity > $part->quantity) {
-                return redirect()->back()->with('error', 'Quantity for part ID ' . $part->vehicleDetail?->parts_name . ' exceeds available stock.');
-            }
-
 
             $finalAmount = intval($quantity) * intval($part->unit_price?? 0);
 
@@ -242,6 +257,11 @@ class StockMovementController extends Controller
         ]);
 
         DB::commit();
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Stock movement failed: ' . $e->getMessage());
+        }
 
         return redirect()->route('stock-movment.index')->with('success', 'Stock moved successfully.');
     }

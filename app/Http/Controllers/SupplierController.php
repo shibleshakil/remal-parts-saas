@@ -214,8 +214,8 @@ class SupplierController extends Controller
                     'transaction_date' => $request->payment_date,
                     'trxid' => 'SUP-' . Str::uuid()->toString(),
                     'type' => 'supplier_payment',
-                    'vehicle_id' => $transection->vehicle_id??null,
-                    'vehicle_details_id' => $transection->vehicle_details_id??null,
+                    'vehicle_id' => $transetionInput->vehicle_id??null,
+                    'vehicle_details_id' => $transetionInput->vehicle_details_id??null,
                     'sale_id' => null, // Not tied to a specific sale
                     'status' => 'completed',
                     'current_balance' => $balance->balance,
@@ -264,16 +264,20 @@ class SupplierController extends Controller
         $from = request('from') ? Carbon::parse(request('from'))->format('Y-m-d') : Carbon::now()->startOfMonth()->format('Y-m-d');
         $to = request('to') ? Carbon::parse(request('to'))->format('Y-m-d') : Carbon::now()->startOfDay()->format('Y-m-d');
 
-        // Fetch filtered transactions
+        // Fetch filtered transactions — MUST be ordered chronologically,
+        // otherwise the running balance in the view accumulates in random
+        // DB order and payment rows apply before their purchases.
         $data = Transaction::where('supplier_id', $supplier->id)
             ->whereBetween('transaction_date', [$from, $to])
-            ->select('transaction_date', 'type', 'final_amount', 'paid_amount')
+            ->select('id', 'transaction_date', 'type', 'final_amount', 'paid_amount', 'purchase_invoice_no')
+            ->orderBy('transaction_date')
+            ->orderBy('id')
             ->get();
 
-            $preDue = Transaction::where('supplier_id', $supplier->id)
-            ->where('transaction_date', '<', $from)
-            ->selectRaw('SUM(final_amount - paid_amount) as due')
-            ->first();
+        $preDue = Transaction::where('supplier_id', $supplier->id)
+        ->where('transaction_date', '<', $from)
+        ->selectRaw('SUM(COALESCE(final_amount, 0) - COALESCE(paid_amount, 0)) as due')
+        ->first();
 
         return view('supplier.transactions', compact('data', 'supplier', 'preDue'));
     }

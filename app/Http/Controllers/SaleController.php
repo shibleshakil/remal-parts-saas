@@ -104,7 +104,7 @@ class SaleController extends Controller
     public function create()
     {
         $customers = Customer::select('id', 'name', 'phone', 'address')->latest()->get();
-        $vehicles = Vehicle::with('details')->select('id', 'name', 'uid')->get();
+        $vehicles = Vehicle::with('details.purchaseLines')->select('id', 'name', 'uid')->get();
         $banks = Bank::select('id', 'bank_name', 'account_name', 'account_no')->latest()->get();
 
         $parts = VehicleDetails::whereNull('vehicle_id')
@@ -379,7 +379,12 @@ class SaleController extends Controller
                     throw new \Exception("Invalid cost for {$product['item_name']}. Expected: {$calculatedCost}, Got: {$product['cost']}");
                 }
 
-                $purchaseLine = PurchaseLines::find($product['item_id']);
+                // Branch-scoped lookup with row lock: a cross-branch or missing
+                // line id must fail loud instead of recording stock-less sales.
+                $purchaseLine = null;
+                if ($product['item_id'] !== '0' && $product['item_id'] !== null) {
+                    $purchaseLine = PurchaseLines::lockForUpdate()->findOrFail($product['item_id']);
+                }
 
                 if ($purchaseLine) {
                     $availableQuantity = $purchaseLine->quantity ?? 0;
@@ -435,7 +440,6 @@ class SaleController extends Controller
                 'current_balance'  => $balance->balance,
                 'branch_id' => active_branch_id(),
             ]);
-
 
 
             // $customer_email = Customer::where('id',$validator->validated()['customer'])->first();
@@ -622,7 +626,10 @@ class SaleController extends Controller
                     throw new \Exception("Invalid cost for {$product['item_name']}. Expected: {$calculatedCost}, Got: {$product['cost']}");
                 }
 
-                $purchaseLine = PurchaseLines::find($product['item_id']);
+                $purchaseLine = null;
+                if ($product['item_id'] !== '0' && $product['item_id'] !== null) {
+                    $purchaseLine = PurchaseLines::lockForUpdate()->findOrFail($product['item_id']);
+                }
 
                 if ($purchaseLine) {
                     $availableQuantity = $purchaseLine->quantity ?? 0;
@@ -746,9 +753,13 @@ class SaleController extends Controller
 
             $sale = Sale::with('items')->findOrFail($id);
 
+            // Restore stock for every stock-backed item type (spare_part and
+            // car_spare_part both reference a purchase line).
             $sale->items->each(function ($item) {
-                if ($item->item_type === 'spare_part' && $item->item_id !== '0') {
-                    $purchaseLine = PurchaseLines::find($item->purchase_line_id);
+                if (in_array($item->item_type, ['spare_part', 'car_spare_part'])
+                    && $item->purchase_line_id !== '0'
+                    && $item->purchase_line_id !== null) {
+                    $purchaseLine = PurchaseLines::lockForUpdate()->find($item->purchase_line_id);
 
                     if ($purchaseLine) {
                         $purchaseLine->quantity += $item->quantity;   // return stock
@@ -758,8 +769,14 @@ class SaleController extends Controller
                 }
             });
 
+            // Reverse the sale's NET cash effect on the branch balance:
+            // - non-refund transactions put cash IN  -> take it back out
+            // - refund transactions took cash OUT    -> put it back in
             $transactions = Transaction::where('sale_id', $sale->id);
-            $balance->decrement('balance',  $transactions->sum('paid_amount') ?? 0);
+            $cashIn  = (clone $transactions)->where('type', '!=', 'refund')->sum('paid_amount') ?? 0;
+            $cashOut = (clone $transactions)->where('type', 'refund')->sum('paid_amount') ?? 0;
+            $balance->decrement('balance', $cashIn);
+            $balance->increment('balance', $cashOut);
             SaleDetails::where('sale_id', $sale->id)->delete();
             $transactions->delete();
             $sale->update(['deleted_by' => auth()->id()]);
@@ -996,7 +1013,17 @@ class SaleController extends Controller
 
                 foreach ($validated['products'] as $exchangeItem) {
                     $newItemCalculatedCost = ($exchangeItem['unit_price'] * $exchangeItem['quantity']) ?? 0;
-                    $purchaseLine = PurchaseLines::where('vehicle_detail_id', $exchangeItem['item_id'])->first();
+
+                    // Pick an in-stock purchase line of this part in the active
+                    // branch (locked), instead of blindly taking the first row.
+                    $purchaseLine = null;
+                    if (!empty($exchangeItem['item_id']) && $exchangeItem['item_id'] != 0) {
+                        $purchaseLine = PurchaseLines::lockForUpdate()
+                            ->where('vehicle_detail_id', $exchangeItem['item_id'])
+                            ->where('quantity', '>=', $exchangeItem['quantity'])
+                            ->orderBy('quantity', 'desc')
+                            ->first();
+                    }
 
                     $exchangeProduct = SaleDetails::create([
                         'sale_id'         => $sale->id,
@@ -1018,11 +1045,13 @@ class SaleController extends Controller
                     // Deduct stock
                     if (!empty($exchangeItem['item_id']) && $exchangeItem['item_id'] != 0) {
 
-                        if ($purchaseLine) {
-                            $purchaseLine->quantity -= $exchangeItem['quantity'];
-                            $purchaseLine->sold_quantity += $exchangeItem['quantity'];
-                            $purchaseLine->save();
+                        if (!$purchaseLine) {
+                            throw new \Exception("Insufficient stock for exchange item '{$exchangeItem['item_name']}'.");
                         }
+
+                        $purchaseLine->quantity -= $exchangeItem['quantity'];
+                        $purchaseLine->sold_quantity += $exchangeItem['quantity'];
+                        $purchaseLine->save();
                     }
 
                     $totalExchangeCost += $newItemCalculatedCost;
@@ -1075,7 +1104,19 @@ class SaleController extends Controller
                 ]);
 
             }else if($request->refund_amount > 0){
-                $balance->balance  -= $request->refund_amount;
+            // Refund includes the VAT portion (the customer paid VAT on these
+            // goods at sale time), mirroring how the sale charged them.
+            $totalRefundWithVat = $totalRefund + ($totalRefund * $vat);
+
+            // Capped by the value of goods actually returned in this request
+            // (goods + VAT) and by the cash currently held by the branch.
+            $refundable = min($totalRefundWithVat, $balance->balance);
+
+            if ($request->refund_amount > $refundable) {
+                throw new \Exception("Refund amount exceeds refundable amount. Refundable (goods + VAT): {$refundable}");
+            }
+
+            $balance->balance  -= $request->refund_amount;
                 $balance->save();
 
                 Transaction::create(attributes: [
@@ -1154,6 +1195,14 @@ class SaleController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             $this->logError('returnSale', $e);
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'status' => 'error',
+                    'errors' => $e->getMessage(),
+                ], 422);
+            }
+
             return redirect()->back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
     }
@@ -1222,6 +1271,7 @@ class SaleController extends Controller
                 'note' => 'Due payment for Sale #' . $sale->id . ' via ' . $validator->validated()['payment_method'],
                 'created_by' => auth()->id(),
                 'current_balance' => $balance->balance + $validator->validated()['payment_amount'],
+                'branch_id' => active_branch_id(),
             ]);
 
             $balance->increment('balance', $validator->validated()['payment_amount'] ?? 0);

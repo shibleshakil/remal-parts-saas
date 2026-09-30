@@ -43,19 +43,26 @@ class ReportController extends Controller
             : 'vd.id, vd.uid, vd.parts_name, vd.car_name, vd.car_model';
 
 
+        $params = [];
+
+        // Kept in the JOIN so parts without purchases in this branch still appear with zero stock.
+        $branchJoin = '';
+        if (active_branch_id()) {
+            $branchJoin = ' AND pl.branch_id = ?';
+            $params[] = active_branch_id();
+        }
+
         // 4. BASE QUERY
         $sql = "SELECT
                     $selectOpt,
                     SUM(pl.unit_price * pl.quantity) as total_price,
                     SUM(pl.quantity) as total_quantity
                 FROM vehicle_details vd
-                LEFT JOIN purchase_lines pl ON vd.id = pl.vehicle_detail_id
+                LEFT JOIN purchase_lines pl ON vd.id = pl.vehicle_detail_id $branchJoin
                 LEFT JOIN vehicles v ON vd.vehicle_id = v.id
                 WHERE $typeCondition
                 AND vd.deleted_at IS NULL
                 AND (pl.deleted_at IS NULL OR pl.deleted_at IS NULL)";
-
-        $params = [];
 
         // 5. FILTERS
         if ($request->filled('uid')) {

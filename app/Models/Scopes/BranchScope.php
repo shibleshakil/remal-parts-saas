@@ -11,19 +11,29 @@ class BranchScope implements Scope
 {
     /**
      * Apply the scope to a given Eloquent query builder.
+     *
+     * Rules:
+     * - Authenticated user with an active branch -> strict filter on that branch.
+     * - Super Admin with NO active branch -> intentionally unscoped (global view).
+     * - Any other user with no resolvable branch -> fail-loud: the account is
+     *   misconfigured (no branch assigned) and must not silently see all data.
      */
     public function apply(Builder $builder, Model $model)
     {
-        if (Auth::check()) {
-            $user = Auth::user();
+        if (!Auth::check()) {
+            return;
+        }
 
-            // Get active branch from session OR fallback to user's branch
-            $activeBranchId = session('active_branch_id') ?? $user->branch_id;
+        $activeBranchId = active_branch_id();
 
-            // Apply filter ALWAYS (even for super admin)
-            if ($activeBranchId) {
-                $builder->where($model->getTable() . '.branch_id', $activeBranchId);
-            }
+        if ($activeBranchId) {
+            $builder->where($model->getTable() . '.branch_id', $activeBranchId);
+
+            return;
+        }
+
+        if (!isSuperAdmin()) {
+            abort(403, 'No branch assigned to your account. Please contact the administrator.');
         }
     }
 }

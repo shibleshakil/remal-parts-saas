@@ -270,15 +270,20 @@ class CustomerController extends Controller
         $from = request('from') ? Carbon::parse(request('from'))->format('Y-m-d') : Carbon::now()->startOfMonth()->format('Y-m-d');
         $to = request('to') ? Carbon::parse(request('to'))->format('Y-m-d') : Carbon::now()->startOfDay()->format('Y-m-d');
 
-        // Fetch filtered transactions
+        // Fetch filtered transactions — MUST be ordered chronologically,
+        // otherwise the running balance in the view accumulates in random
+        // DB order and payment rows apply before their sales.
         $data = Transaction::where('customer_id', $customer->id)
+            ->with('sale')
             ->whereBetween('transaction_date', [$from, $to])
-            ->select('transaction_date', 'type', 'final_amount', 'paid_amount')
+            ->select('id', 'transaction_date', 'type', 'final_amount', 'paid_amount', 'sale_id')
+            ->orderBy('transaction_date')
+            ->orderBy('id')
             ->get();
 
         $preDue = Transaction::where('customer_id', $customer->id)
             ->where('transaction_date', '<', $from)
-            ->selectRaw('SUM(final_amount - paid_amount) as due')
+            ->selectRaw('SUM(COALESCE(final_amount, 0) - COALESCE(paid_amount, 0)) as due')
             ->first();
 
         return view('customer.transactions', compact('data', 'customer', 'preDue'));

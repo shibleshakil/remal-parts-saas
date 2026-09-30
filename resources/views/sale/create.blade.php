@@ -730,13 +730,23 @@
                         submitBtn.find('.spinner-border').remove();
 
                         if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                            const errors = xhr.responseJSON.errors;
+
+                            // Plain-string error (e.g. "Insufficient stock ...") — show it directly
+                            if (typeof errors === 'string' || Array.isArray(errors)) {
+                                Swal.fire({
+                                    title: "Error",
+                                    text: typeof errors === 'string' ? errors : errors.join("\n"),
+                                    icon: "error"
+                                });
+                                return;
+                            }
+
                             Swal.fire({
                                 title: "Error",
                                 text: "You have some error in form input field. Please check input field value.",
                                 type: "error"
                             });
-
-                            const errors = xhr.responseJSON.errors;
 
                             $.each(errors, function(fieldKey, messages) {
                                 const bracketName = fieldKey.replace(/\.(\d+)/g, '[$1]');

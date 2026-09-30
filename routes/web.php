@@ -250,7 +250,7 @@ Route::group(['middleware' => ['auth']], function () {
         Route::post('/{purchase}/pay-due', [PurchaseController::class, 'payDue'])->name('pay-due')->middleware('permission:purchase.pay-due');
         Route::get('/{purchase}/return', [PurchaseController::class, 'returnPurchase'])->name('returnPurchase')->middleware('permission:purchase.returnPurchase');
         Route::post('/{purchase}/return', [PurchaseController::class, 'returnPurchasePost'])->name('returnPurchasePost')->middleware('permission:purchase.returnPurchasePost');
-        Route::get('/parts-return', [PurchasePartsReturnListController::class, 'index'])->name('parts-return.index')->middleware('permission:purchase.parts-return-index');
+        Route::get('/parts-return', [PurchasePartsReturnListController::class, 'index'])->name('parts-return.index')->middleware('permission:purchase.parts-return.index');
     });
 
 
