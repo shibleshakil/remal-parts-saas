@@ -181,18 +181,72 @@ class BranchController extends Controller
     }
 
     /**
+     * Tables holding branch-owned data. Used to block deletion of a branch
+     * that still has records (the FKs are ON DELETE CASCADE, so deleting
+     * would silently wipe all of the branch's data).
+     */
+    private function relatedCounters(Branch $branch): array
+    {
+        return [
+            'Users'          => DB::table('users')->where('branch_id', $branch->id)->count(),
+            'Sales'          => DB::table('sales')->where('branch_id', $branch->id)->count(),
+            'Sale Lines'     => DB::table('sale_details')->where('branch_id', $branch->id)->count(),
+            'Purchases'      => DB::table('purchase_lines')->where('branch_id', $branch->id)->count(),
+            'Transactions'   => DB::table('transactions')->where('branch_id', $branch->id)->count(),
+            'Expenses'       => DB::table('expenses')->where('branch_id', $branch->id)->count(),
+            'Quotes'         => DB::table('quotes')->where('branch_id', $branch->id)->count(),
+            'Sale Returns'   => DB::table('parts_return_lists')->where('branch_id', $branch->id)->count(),
+            'Purchase Returns' => DB::table('purchase_parts_return_lists')->where('branch_id', $branch->id)->count(),
+            'Stock Transfers' => DB::table('stock_movements')
+                ->where('branch_from_id', $branch->id)
+                ->orWhere('branch_to_id', $branch->id)
+                ->count(),
+            'Balance Records' => DB::table('balances')->where('branch_id', $branch->id)->count(),
+        ];
+    }
+
+    /**
+     * Related-data summary for the delete-confirmation modal (AJAX GET).
+     */
+    public function related(Branch $branch)
+    {
+        $related = collect($this->relatedCounters($branch))
+            ->filter(fn ($count) => $count > 0);
+
+        return response()->json([
+            'related' => $related->toArray(),
+            'total'   => $related->sum(),
+        ]);
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Branch $branch)
     {
-        if (StockMovement::where('branch_from_id', $branch->id)->orWhere('branch_to_id', $branch->id)->exists()) {
+        $related = collect($this->relatedCounters($branch))
+            ->filter(fn ($count) => $count > 0);
+
+        if ($related->isNotEmpty()) {
             return response()->json([
                 'type' => 'error',
-                'title' => __('Error!'),
-                'msg' => __('Cannot delete branch with associated stock movements.'),
+                'title' => __('Cannot Delete!'),
+                'msg' => __('This branch still has associated records: ') . $related->map(
+                    fn ($count, $label) => "{$label} ({$count})"
+                )->implode(', '),
+                'related' => $related->toArray(),
             ], 400);
         }
-        
+
+        // Do not delete the branch the current session is switched to.
+        if (active_branch_id() === (int) $branch->id) {
+            return response()->json([
+                'type' => 'error',
+                'title' => __('Cannot Delete!'),
+                'msg' => __('This is your currently active branch. Switch to another branch first.'),
+            ], 400);
+        }
+
         $branch->delete();
 
         return response()->json([

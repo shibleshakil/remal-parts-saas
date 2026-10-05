@@ -383,7 +383,14 @@ class SaleController extends Controller
                 // line id must fail loud instead of recording stock-less sales.
                 $purchaseLine = null;
                 if ($product['item_id'] !== '0' && $product['item_id'] !== null) {
-                    $purchaseLine = PurchaseLines::lockForUpdate()->findOrFail($product['item_id']);
+                    $purchaseLine = PurchaseLines::lockForUpdate()->find($product['item_id']);
+
+                    if (!$purchaseLine) {
+                        throw new \Exception(
+                            "{$product['item_name']} is not available in the current branch or no longer exists. "
+                            . 'Please remove it from the list and add the item again.'
+                        );
+                    }
                 }
 
                 if ($purchaseLine) {
@@ -628,7 +635,14 @@ class SaleController extends Controller
 
                 $purchaseLine = null;
                 if ($product['item_id'] !== '0' && $product['item_id'] !== null) {
-                    $purchaseLine = PurchaseLines::lockForUpdate()->findOrFail($product['item_id']);
+                    $purchaseLine = PurchaseLines::lockForUpdate()->find($product['item_id']);
+
+                    if (!$purchaseLine) {
+                        throw new \Exception(
+                            "{$product['item_name']} is not available in the current branch or no longer exists. "
+                            . 'Please remove it from the list and add the item again.'
+                        );
+                    }
                 }
 
                 if ($purchaseLine) {

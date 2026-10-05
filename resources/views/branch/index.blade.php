@@ -67,7 +67,7 @@
                                                         @can('branch.delete')
                                                         <button type="button" class="btn btn-md btn-danger"
                                                             title="Delete"
-                                                            onclick="deleteData('{{ route('branch.delete', $branch->id) }}')">
+                                                            onclick="deleteBranch({{ $branch->id }}, '{{ addslashes($branch->name) }}')">
                                                             <i class="feather icon-trash"></i>
                                                         </button>
                                                         @endcan
@@ -198,5 +198,88 @@
                 document.getElementById('details-' + id).classList.toggle('d-none');
             }
         });
+
+        function deleteBranch(id, name) {
+            const relatedUrl = "{{ route('branch.related', ':id') }}".replace(':id', id);
+            const deleteUrl  = "{{ route('branch.delete', ':id') }}".replace(':id', id);
+
+            $.ajax({
+                url: relatedUrl,
+                type: 'GET',
+                success: function (res) {
+                    const related = res.related || {};
+                    const entries = Object.entries(related);
+
+                    if (entries.length > 0) {
+                        // Blocked: build a list of related data for the modal
+                        let listHtml = '<ul style="text-align:left; display:inline-block; margin-top:10px;">';
+                        entries.forEach(function ([label, count]) {
+                            listHtml += '<li>' + label + ': <b>' + count + '</b></li>';
+                        });
+                        listHtml += '</ul>';
+
+                        Swal.fire({
+                            title: 'Cannot Delete "' + name + '"',
+                            html:
+                                '<p class="text-danger">This branch has associated records and cannot be deleted.</p>' +
+                                '<p style="font-size:14px;">Deleting a branch with data would permanently erase:</p>' +
+                                listHtml +
+                                '<p style="font-size:13px; margin-top:10px;">Reassign or remove these records first.</p>',
+                            icon: 'warning',
+                            confirmButtonText: 'OK',
+                            buttonsStyling: false,
+                            customClass: { confirmButton: 'btn btn-primary' }
+                        });
+                        return;
+                    }
+
+                    // No related data — normal confirm, then delete
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: 'Delete branch "' + name + '"? This cannot be undone!',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        cancelButtonText: 'No',
+                        confirmButtonText: 'Yes, delete it',
+                        buttonsStyling: false,
+                        customClass: {
+                            confirmButton: 'btn btn-warning mr-10',
+                            cancelButton: 'btn btn-danger ml-1'
+                        }
+                    }).then(function (result) {
+                        if (!result.value) return;
+
+                        $.ajax({
+                            url: deleteUrl,
+                            type: 'DELETE',
+                            data: { _token: $('#csrfToken').val() },
+                            beforeSend: function () { blockBodyOnAjaxRequest(); },
+                            complete: function () { $('body').unblock(); },
+                            success: function (res) {
+                                Swal.fire({
+                                    title: res.title,
+                                    text: res.msg,
+                                    icon: res.type,
+                                    confirmButtonClass: 'btn btn-success'
+                                }).then(function () { location.reload(); });
+                            },
+                            error: function (xhr) {
+                                Swal.fire({
+                                    title: 'Error',
+                                    text: (xhr.responseJSON && (xhr.responseJSON.msg || xhr.responseJSON.message))
+                                        || 'Cannot delete this branch.',
+                                    icon: 'error'
+                                });
+                            }
+                        });
+                    });
+                },
+                error: function () {
+                    Swal.fire('Error', 'Could not check branch relations. Please try again.', 'error');
+                }
+            });
+        }
     </script>
 @endsection

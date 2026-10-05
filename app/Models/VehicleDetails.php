@@ -53,7 +53,7 @@ class VehicleDetails extends Model
         if (!$sample->uid) {
             $total = self::withTrashed()->count();
             $uid = $total + 1;
-            $sample->uid = "SP" . sprintf('%03d', $uid) ."-B". $sample->branch_id;
+            $sample->uid = "SP" . sprintf('%03d', $uid);
         }
 
         if (!$sample->barcode) {

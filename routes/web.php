@@ -279,6 +279,7 @@ Route::group(['middleware' => ['auth']], function () {
         Route::get('/{branch}/edit', 'App\Http\Controllers\BranchController@edit')->name('edit')->middleware('permission:branch.edit');
         Route::put('/{branch}/update', 'App\Http\Controllers\BranchController@update')->name('update')->middleware('permission:branch.update');
         Route::delete('/{branch}/delete', 'App\Http\Controllers\BranchController@destroy')->name('delete')->middleware('permission:branch.delete');
+        Route::get('/{branch}/related', 'App\Http\Controllers\BranchController@related')->name('related')->middleware('permission:branch.delete');
         Route::post('/switch-branch', 'App\Http\Controllers\BranchController@switch')->name('switch');
     });
 
