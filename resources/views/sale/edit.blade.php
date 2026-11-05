@@ -313,31 +313,32 @@
             let vat_amount = $('#vat_amount');
             let final_amount_text = $('#final_amount_text');
             let final_amount = $('#final_amount');
-            let paid_amount = $('#paid_amount');
-            const discountType = $('#discount_type').val();
 
+            // NOTE: unlike the create page, the edit page must NOT overwrite
+            // #paid_amount with the final amount — that field holds the real
+            // total already received (initial payment + due payments - refunds).
             if(vatType === 'inclusive') {
                 const vatAmount = (total * vatRate) || 0;
-                const finalAmount = discountType === 'percentage' ? total - (total * discount / 100) : total - discount;
+                const finalAmount = total - discount;
                 const finalAmountWithOutVat = finalAmount + vatAmount;
 
                 vat_amount_text.text(vatAmount.toFixed(2));
                 vat_amount.val(vatAmount.toFixed(2) || 0);
                 final_amount_text.text(finalAmountWithOutVat.toFixed(2));
                 final_amount.val(finalAmountWithOutVat.toFixed(2));
-                paid_amount.val(finalAmountWithOutVat.toFixed(2));
-
             } else if(vatType === 'exclusive') {
                 const vatAmount = (total * vatRate) || 0;
-                const finalAmount = discountType === 'percentage' ? total - (total * discount / 100) : total - discount;
+                const finalAmount = total - discount;
                 const finalAmountWithVat = finalAmount + vatAmount;
 
                 vat_amount_text.text(vatAmount.toFixed(2));
                 vat_amount.val(vatAmount.toFixed(2) || 0);
                 final_amount_text.text(finalAmountWithVat.toFixed(2));
                 final_amount.val(finalAmountWithVat.toFixed(2));
-                paid_amount.val(finalAmountWithVat.toFixed(2));
             }
+
+            // Keep the live due amount in sync with the (possibly new) total.
+            updateDueAmount();
         }
 
         $('#vat_type').on('change', function () {
@@ -628,6 +629,18 @@
                 const finalAmount = parseFloat($('#final_amount').val()) || 0;
                 const paidAmount = parseFloat($('#paid_amount').val()) || 0;
                 const customer = $('#customer').val();
+                if(paidAmount - finalAmount > 0.005){
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Invalid Paid Amount',
+                        text: 'Paid amount cannot exceed the final amount!'
+                    });
+
+                    submitBtn.removeAttr('disabled');
+                    submitBtn.find('.spinner-border').remove();
+
+                    return false;
+                }
                 if(customer == "" && paidAmount < finalAmount){
                     Swal.fire({
                         title: 'Customer Alert',
@@ -761,36 +774,57 @@
         });
     });
 
-    $(document).on('input', '#paid_amount', function () {
-        let total_parts_price = parseFloat($('#final_amount').val()) || 0;
-        let paid_amount = parseFloat($('#paid_amount').val()) || 0;
-        let $firstPaidAmountCell = $('#transactions_table tbody tr .paid_amount').first();
+    // Paid amount = TOTAL received for this sale (initial payment + due
+    // payments - refunds). Changing it must NEVER rewrite the recorded
+    // transaction rows (especially the initial one); it only previews the
+    // delta (extra payment / refund) that this edit will record, and keeps
+    // the due amount truthful: due = final amount - paid amount.
+    let historicalTotalPaid = null;
 
-        if ($firstPaidAmountCell.length) {
-            $firstPaidAmountCell.text(paid_amount.toFixed(2));
+    function getHistoricalTotalPaid() {
+        if (historicalTotalPaid === null) {
+            let total = 0;
+            $('#transactions_table tbody tr').not('#pending_adjustment_row').each(function() {
+                const paid = parseFloat($(this).find('.paid_amount').first().text().replace(/,/g, '')) || 0;
+                const refund = parseFloat($(this).find('.refund_amount').first().text().replace(/,/g, '')) || 0;
+                total += paid - refund;
+            });
+            historicalTotalPaid = total;
+        }
+        return historicalTotalPaid;
+    }
+
+    function updateDueAmount() {
+        const finalAmount = parseFloat($('#final_amount').val()) || 0;
+        const paidAmount = parseFloat($('#paid_amount').val()) || 0;
+        $('#dueAmount').val((finalAmount - paidAmount).toFixed(2));
+    }
+
+    $(document).on('input', '#paid_amount', function () {
+        const paidAmount = parseFloat($('#paid_amount').val()) || 0;
+        const delta = paidAmount - getHistoricalTotalPaid();
+        const $pending = $('#pending_adjustment_row');
+
+        if (Math.abs(delta) >= 0.005) {
+            const isPayment = delta > 0;
+            const label = isPayment ? 'New payment (this edit)' : 'Refund (this edit)';
+            const amountCell = `<td class="text-right ${isPayment ? 'paid_amount' : 'refund_amount'}">${Math.abs(delta).toFixed(2)}</td>`;
+
+            if ($pending.length) {
+                $pending.html(`<td>—</td><td><em>${label}</em></td>${amountCell}`);
+            } else {
+                $('#transactions_table tbody').append(
+                    `<tr id="pending_adjustment_row" class="text-info"><td>—</td><td><em>${label}</em></td>${amountCell}</tr>`
+                );
+            }
+        } else {
+            $pending.remove();
         }
 
-        updateTransactionsTable();
+        // Existing transactions + this edit's delta = the paid field value.
+        $('#total_paid_amount').text(paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+        updateDueAmount();
     });
-
-    function updateTransactionsTable() {
-        let totalPaid = 0;
-        let totalRefund = 0;
-        $('#transactions_table tbody tr .paid_amount').each(function() {
-            let val = parseFloat($(this).text().replace(/,/g, '')) || 0;
-            totalPaid += val;
-        });
-        $('#transactions_table tbody tr .refund_amount').each(function() {
-            let val = parseFloat($(this).text().replace(/,/g, '')) || 0;
-            totalRefund += val;
-        });
-
-        let total = totalPaid - totalRefund;
-
-        $('#total_paid_amount').text(total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-
-        let finalAmount = parseFloat($('#final_amount').val()) || 0;
-        $('#dueAmount').val((finalAmount - total).toFixed(2));
-    }
 </script>
 @endsection

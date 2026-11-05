@@ -40,7 +40,7 @@
     <!-- END: Page CSS-->
 
     <!-- BEGIN: Custom CSS-->
-    <link rel="stylesheet" type="text/css" href="{{ asset('public/assets/css/style.css?v7') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('public/assets/css/style.css?v8') }}">
     <!-- END: Custom CSS-->
 
     @yield('css')

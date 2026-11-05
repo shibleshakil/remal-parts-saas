@@ -58,6 +58,27 @@ class PurchaseController extends Controller
 
         $sl = ($purchases->currentPage() - 1) * $perPage;
 
+        // Resolve the invoice's supplier from its TRANSACTIONS (authoritative):
+        // groupBy('invoice_no') returns one arbitrary line, which may carry a
+        // NULL supplier even though the invoice belongs to a real supplier.
+        $invoiceNos = $purchases->pluck('invoice_no')->filter();
+        $invoiceSuppliers = Transaction::whereNull('deleted_at')
+            ->whereIn('purchase_invoice_no', $invoiceNos)
+            ->whereNotNull('supplier_id')
+            ->get(['purchase_invoice_no', 'supplier_id'])
+            ->groupBy('purchase_invoice_no')
+            ->map(fn ($group) => $group->pluck('supplier_id')->unique()->values());
+
+        $supplierNames = Supplier::whereIn('id', $invoiceSuppliers->flatten()->unique())
+            ->pluck('name', 'id');
+
+        foreach ($purchases as $purchase) {
+            $ids = $invoiceSuppliers[$purchase->invoice_no] ?? collect();
+            $purchase->invoice_supplier_name = $ids->count() === 1
+                ? ($supplierNames[$ids->first()] ?? null)
+                : null; // unknown or mixed -> fall back to the line's supplier
+        }
+
         return view('purchase.index', ['datas' => $purchases, 'sl' => $sl]);
     }
 
@@ -304,6 +325,11 @@ class PurchaseController extends Controller
                 throw new \Exception("Payment amount exceeds due amount. Due: {$dueAmount}");
             }
 
+            // Apply the balance change FIRST, then record the resulting
+            // balance — current_balance must reflect the post-payment value.
+            $balance->decrement('balance', $paymentAmount);
+            $balance->refresh();
+
             $newTransaction = Transaction::create([
                 'paid_amount'        => $paymentAmount,
                 'supplier_id'        => $purchase->supplier_id,
@@ -316,14 +342,12 @@ class PurchaseController extends Controller
                 'vehicle_details_id' => $transactions[0]->vehicle_details_id ?? null,
                 'sale_id'            => null,
                 'status'             => $paymentAmount == $dueAmount ? 'paid' : 'partially_paid',
-                'current_balance'    => $balance->balance - $paymentAmount,
+                'current_balance'    => $balance->balance,
                 'note'               => $validator->validated()['payment_note'] ?? null,
                 'created_by'         => auth()->id(),
                 'purchase_invoice_no'=> $transactions[0]->purchase_invoice_no ?? null,
                 'branch_id'          => active_branch_id(),
             ]);
-
-            $balance->decrement('balance', $validator->validated()['payment_amount']);
 
 
             DB::commit();

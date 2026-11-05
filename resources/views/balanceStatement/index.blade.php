@@ -68,6 +68,65 @@
                                         </form>
                                     </div>
                                 </div>
+
+                                {{-- Mini Statement Summary --}}
+                                @php
+                                    $totalIn = 0.0;
+                                    $totalOut = 0.0;
+                                    foreach ($data as $t) {
+                                        if (in_array($t->type, $balanceInTypes)) {
+                                            $totalIn += (float) $t->paid_amount;
+                                        } else {
+                                            $totalOut += (float) $t->paid_amount;
+                                        }
+                                    }
+                                    $currentBalance = $previousBalance + $totalIn - $totalOut;
+                                    $fromLabel = request('from') ?? \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d');
+                                    $toLabel = request('to') ?? \Carbon\Carbon::now()->format('Y-m-d');
+                                @endphp
+                                <div class="d-flex gap-1 mb-2 mini-summery">
+                                    <div class="mb-1 shadow">
+                                        <div class="card h-100 mb-0 border-left-success">
+                                            <div class="card-body py-1 px-2">
+                                                <p class="h4 mb-0">Total In</p>
+                                                <div class="font-weight-bold text-success h2 mb-0">{{ number_format($totalIn, 2) }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-1 shadow">
+                                        <div class="card h-100 mb-0 border-left-danger">
+                                            <div class="card-body py-1 px-2">
+                                                <p class="h4 mb-0">Total Out</p>
+                                                <div class="font-weight-bold text-danger h2 mb-0">{{ number_format($totalOut, 2) }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-1 shadow">
+                                        <div class="card h-100 mb-0 border-left-secondary">
+                                            <div class="card-body py-1 px-2" title="{{ $fromLabel }} to {{ $toLabel }}: Total In {{ number_format($totalIn, 2) }} - Total Out {{ number_format($totalOut, 2) }} = {{ number_format($totalIn - $totalOut, 2) }}">
+                                                <p class="h4 mb-0">Balance</p>
+                                                <div class="font-weight-bold text-secondary h2 mb-0">{{ number_format($totalIn - $totalOut, 2) }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-1 shadow">
+                                        <div class="card h-100 mb-0 border-left-info">
+                                            <div class="card-body py-1 px-2">
+                                                <p class="h4 mb-0">Previous Balance</p>
+                                                <div class="font-weight-bold text-info h2 mb-0">{{ number_format($previousBalance, 2) }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-1 shadow">
+                                        <div class="card h-100 mb-0 border-left-primary">
+                                            <div class="card-body py-1 px-2" title="Previous Balance {{ number_format($previousBalance, 2) }} (before {{ $fromLabel }}) + Total In {{ number_format($totalIn, 2) }} - Total Out {{ number_format($totalOut, 2) }} = {{ number_format($currentBalance, 2) }}">
+                                                <p class="h4 mb-0">Current Balance</p>
+                                                <div class="font-weight-bold text-primary h2 mb-0">{{ number_format($currentBalance, 2) }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="">
                                     <table
                                         id='balanceStatementTable'
@@ -78,6 +137,8 @@
                                             <tr class="text-center">
                                                 <th class="text-left">Date</th>
                                                 <th class="text-left">Purpose</th>
+                                                <th class="text-left">Client / Supplier</th>
+                                                <th class="text-left">Payment Method</th>
                                                 <th class="text-right">Balance In</th>
                                                 <th class="text-right">Balance Out</th>
                                                 <th class="text-right">Balance</th>
@@ -90,6 +151,8 @@
 
                                             <tr>
                                                 <td class="text-left">Previous Balance</td>
+                                                <td></td>
+                                                <td></td>
                                                 <td></td>
                                                 <td></td>
                                                 <td></td>
@@ -120,9 +183,18 @@
                                                     <td class="text-nowrap">
                                                         {{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d M Y') }}
                                                     </td>
-
                                                     <td>
                                                         {{ $typeLabels[$transaction->type] ?? ucwords(str_replace('_', ' ', $transaction->type)) }} {{ $transaction->invoice_number }}
+                                                    </td>
+
+                                                    <td class="text-nowrap">
+                                                        {{ $transaction->customer?->name ?? $transaction->supplier?->name ?? '—' }}
+                                                    </td>
+
+
+
+                                                    <td class="text-nowrap">
+                                                        {{ $transaction->payment_method ? ucwords(str_replace('_', ' ', $transaction->payment_method)) : '—' }}
                                                     </td>
 
                                                     <td class="text-right">
@@ -139,6 +211,17 @@
                                             </tr>
                                             @endforeach
                                         </tbody>
+                                        <tfoot class="bg-light">
+                                            <tr>
+                                                <th></th>
+                                                <th></th>
+                                                <th></th>
+                                                <th class="text-right">Total</th>
+                                                <th class="text-right">{{ number_format($totalIn, 2) }}</th>
+                                                <th class="text-right">{{ number_format($totalOut, 2) }}</th>
+                                                <th class="text-right">{{ number_format($currentBalance, 2) }}</th>
+                                            </tr>
+                                        </tfoot>
                                     </table>
                                 </div>
                             </div>
@@ -172,17 +255,29 @@
             {
                 extend: 'excelHtml5',
                 title: fileTitle,
-                messageTop: displayTitle
+                messageTop: displayTitle,
+                footer: true
             },
             {
                 extend: 'pdfHtml5',
                 title: fileTitle,
-                messageTop: displayTitle
+                messageTop: displayTitle,
+                footer: true
             },
             {
                 extend: 'print',
                 title: 'Balance Statement',
-                messageTop: displayTitle
+                messageTop: displayTitle,
+                footer: true,
+                // Browsers repeat <tfoot> on every printed page - move it to
+                // a normal last body row so the totals appear only at the end.
+                customize: function (win) {
+                    $(win.document.body).find('table').each(function () {
+                        var $table = $(this);
+                        $table.find('tfoot tr').appendTo($table.find('tbody'));
+                        $table.find('tfoot').remove();
+                    });
+                }
             }
         ]
     });

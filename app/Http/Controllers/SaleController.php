@@ -586,9 +586,6 @@ class SaleController extends Controller
             DB::beginTransaction();
             $sale = Sale::with('items')->findOrFail($id);
 
-
-            $oldPaidAmount = $sale->paid_amount ?? 0;
-
             $sale->update([
                 'customer_id' => $validator->validated()['customer'],
                 'date' => $validator->validated()['date'],
@@ -601,7 +598,8 @@ class SaleController extends Controller
                 'vat_type' => $validator->validated()['vat_type'],
                 'vat_amount' => $validator->validated()['vat_amount'],
                 'final_amount' => $validator->validated()['final_amount'],
-                // 'paid_amount' => $validator->validated()['paid_amount'],
+                // paid_amount is NOT written here — the invoice's initial
+                // payment is not the running total (see balance math below).
                 'warranty' => $validator->validated()['warranty'],
                 'promise_payment_date' => $validator->validated()['promise_payment_date'] ?? null,
                 'updated_by' => auth()->id(),
@@ -680,9 +678,20 @@ class SaleController extends Controller
                                 ['balance' => 0]
                             );
 
-            $newPaidAmount = $validator->validated()['paid_amount'] ?? 0;
+            // The edit form's paid_amount is the RUNNING TOTAL received for
+            // this sale — the same meaning as sale.paid_amount, payDue and
+            // the invoice view. Baseline against the sale row's current
+            // total (NOT the initial transaction) so repeated edits can
+            // never double-count earlier payments or adjustments.
+            $oldTotalPaid = (float) $sale->paid_amount;
+            $newTotalPaid = (float) ($validator->validated()['paid_amount'] ?? 0);
+            $finalAmount  = (float) $validator->validated()['final_amount'];
 
-            $balanceChange = $newPaidAmount - $oldPaidAmount;
+            if (round($newTotalPaid - $finalAmount, 2) > 0) {
+                throw new \Exception("Paid amount cannot exceed final amount. Maximum: {$finalAmount}");
+            }
+
+            $balanceChange = round($newTotalPaid - $oldTotalPaid, 2);
 
             if ($balanceChange > 0) {
                 // Company received more payment
@@ -694,30 +703,47 @@ class SaleController extends Controller
                 $balance->refresh();
             }
 
-            // Delete old transactions
-            $sale->transactions->each->delete();
+            // Preserve transaction history: the initial invoice ('sale')
+            // transaction keeps its original paid_amount snapshot — only its
+            // invoice metadata is refreshed. The edit delta is recorded as
+            // its own payment/refund row below, so the ledger total always
+            // equals the sale row's paid_amount.
+            $saleTransaction = $sale->transactions()
+                ->where('type', 'sale')
+                ->orderBy('id')
+                ->first();
 
-            // Create new transaction
-            Transaction::create([
-                'trxid' => 'TRX-' . Str::uuid(),
-                'type' => 'sale',
-                'sale_id' => $sale->id,
-                'customer_id' => $sale->customer_id,
-                'transaction_date' => $validator->validated()['date'],
-                'final_amount' => $validator->validated()['final_amount'],
-                'status'           => $validator->validated()['final_amount'] > $validator->validated()['paid_amount'] ? 'partially_paid' : 'paid',
-                'note' => 'Sale transaction for ' . ($validator->validated()['customer'] ? 'customer ID: ' . $validator->validated()['customer'] : 'Walking Customer'),
-                'created_by' => auth()->id(),
-                'payment_method'   => $validator->validated()['payment_method'],
-                'bank_id'          => $validator->validated()['bank_id'],
-                'paid_amount'      => $validator->validated()['paid_amount'] ?? 0,
-                'current_balance'  => $balance->balance,
-                'branch_id'        => active_branch_id(),
-            ]);
+            if ($saleTransaction) {
+                $saleTransaction->update([
+                    'transaction_date' => $validator->validated()['date'],
+                    'final_amount'     => $finalAmount,
+                    'status'           => $newTotalPaid <= 0 ? 'unpaid' : ($newTotalPaid < $finalAmount ? 'partially_paid' : 'paid'),
+                    'updated_by'       => auth()->id(),
+                ]);
+            }
+
+            if (abs($balanceChange) >= 0.01) {
+                Transaction::create([
+                    'trxid' => 'ADJ-' . Str::uuid(),
+                    'type' => $balanceChange > 0 ? 'payment' : 'refund',
+                    'sale_id' => $sale->id,
+                    'customer_id' => $sale->customer_id,
+                    'transaction_date' => $validator->validated()['date'],
+                    'final_amount' => null,
+                    'status' => 'completed',
+                    'note' => 'Adjustment from edit of Sale #' . $sale->id,
+                    'created_by' => auth()->id(),
+                    'payment_method'   => $validator->validated()['payment_method'],
+                    'bank_id'          => $validator->validated()['bank_id'],
+                    'paid_amount'      => abs($balanceChange),
+                    'current_balance'  => $balance->balance,
+                    'branch_id'        => active_branch_id(),
+                ]);
+            }
 
 
             $sale->update([
-               'paid_amount' => $validator->validated()['paid_amount'] ?? 0,
+               'paid_amount' => $newTotalPaid,
                'item_purchase_amount' => $itemPurchaseAmount
             ]);
 
@@ -1273,6 +1299,11 @@ class SaleController extends Controller
                 'updated_by' => auth()->id(),
             ]);
 
+            // Apply the balance change FIRST, then record the resulting
+            // balance — current_balance must reflect the post-payment value.
+            $balance->increment('balance', $validator->validated()['payment_amount'] ?? 0);
+            $balance->refresh();
+
             $transaction = Transaction::create([
                 'trxid' => 'PAY-' . Str::uuid(),
                 'type' => 'payment',
@@ -1284,11 +1315,9 @@ class SaleController extends Controller
                 'status' => 'completed',
                 'note' => 'Due payment for Sale #' . $sale->id . ' via ' . $validator->validated()['payment_method'],
                 'created_by' => auth()->id(),
-                'current_balance' => $balance->balance + $validator->validated()['payment_amount'],
+                'current_balance' => $balance->balance,
                 'branch_id' => active_branch_id(),
             ]);
-
-            $balance->increment('balance', $validator->validated()['payment_amount'] ?? 0);
 
             DB::commit();
 

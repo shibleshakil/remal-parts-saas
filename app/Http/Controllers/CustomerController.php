@@ -93,9 +93,9 @@ class CustomerController extends Controller
                 $dueAmount = $sale->final_amount - $sale->paid_amount;
 
                 if ($invoiceData['payment'] > $dueAmount) {
-                    return redirect()->back()
-                        ->withErrors(['payment_amount' => "Payment amount for Invoice #{$sale->id} exceeds due amount."])
-                        ->withInput();
+                    // Throw (never return) inside an open transaction so the
+                    // catch block rolls back ALL invoices of this request.
+                    throw new \Exception("Payment amount for Invoice #{$sale->id} exceeds due amount.");
                 }
 
                 // Update paid amount
@@ -152,7 +152,15 @@ class CustomerController extends Controller
         } catch (\Throwable $th) {
             DB::rollback();
             Log::error($th->getMessage());
-            return back()->with('error', 'An error occurred while recording the payments.');
+
+            if (request()->ajax()) {
+                return response()->json([
+                    'status' => 'error',
+                    'errors' => $th->getMessage(),
+                ], 422);
+            }
+
+            return back()->withErrors(['payment_amount' => $th->getMessage()])->withInput();
         }
     }
 
@@ -281,10 +289,25 @@ class CustomerController extends Controller
             ->orderBy('id')
             ->get();
 
+        // Opening balance must mirror the view's row math EXACTLY:
+        // sale/balance_add rows add (final - paid), payments subtract
+        // paid, refunds ADD paid back (money-back rule). A raw
+        // SUM(final_amount - paid_amount) diverges on refund rows.
         $preDue = Transaction::where('customer_id', $customer->id)
             ->where('transaction_date', '<', $from)
-            ->selectRaw('SUM(COALESCE(final_amount, 0) - COALESCE(paid_amount, 0)) as due')
-            ->first();
+            ->get(['type', 'final_amount', 'paid_amount'])
+            ->reduce(function ($carry, $t) {
+                $type = strtolower($t->type);
+
+                if ($type === 'payment') {
+                    return $carry - ($t->paid_amount ?? 0);
+                }
+                if ($type === 'refund') {
+                    return $carry + ($t->paid_amount ?? 0);
+                }
+
+                return $carry + (($t->final_amount ?? 0) - ($t->paid_amount ?? 0));
+            }, 0);
 
         return view('customer.transactions', compact('data', 'customer', 'preDue'));
     }

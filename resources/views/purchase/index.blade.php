@@ -136,7 +136,7 @@
                                                 </td>
                                                 <td>{{ $sp->invoice_no }}</td>
                                                 <td class="text-nowrap">{{\Carbon\Carbon::parse($sp->purchase_date)->format('d M Y') }}</td>
-                                                <td>{{ $sp->supplier?->name ?? 'Walking Supplier' }}</td>
+                                                <td>{{ $sp->invoice_supplier_name ?? $sp->supplier?->name ?? 'Walking Supplier' }}</td>
                                                 <td class="text-right">{{ number_format($total, 2) }}</td>
                                                 <td class="text-right">{{ number_format($due, 2) }}</td>
                                                 <td>

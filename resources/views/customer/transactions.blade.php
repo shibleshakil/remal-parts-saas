@@ -56,11 +56,7 @@
                                                 </div>
                                             </div>
                                         </form>
-                                        <form action="{{ route('customer.transactions',$customer->id) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            <input type="hidden" name="data_reset" value="1">
-                                            <button type="submit" class="btn btn-secondary">{{ __('Reset') }}</button>
-                                        </form>
+                                        <a href="{{ route('customer.transactions', $customer->id) }}" class="btn btn-secondary d-inline-block">{{ __('Reset') }}</a>
                                     </div>
                                 </div>
                                 <div class="">
@@ -84,7 +80,7 @@
                                         <tbody>
                                             @php
                                                 $debitArray = ['sale', 'balance_add'];
-                                                $balance = $preDue->due ?? 0;
+                                                $balance = (float) $preDue;
                                             @endphp
 
                                             <tr>
@@ -112,10 +108,13 @@
                                                         $due = 0;
                                                         $balance -= $paid;
                                                     } elseif ($type === 'refund') {
-                                                        // Cash refunded for returned goods — the sale row is
-                                                        // already recalculated on return, so the refund must
-                                                        // not change the due balance again.
+                                                        // Cash refunded to the customer — money-back rule: the
+                                                        // refund increases the due balance. Show the refund value
+                                                        // in the Amount column, not in the Paid column.
+                                                        $total = $transaction->paid_amount ?? 0;
+                                                        $paid = 0;
                                                         $due = 0;
+                                                        $balance += $total;
                                                     } else {
                                                         // Fallback for other transaction types
                                                         $due = $total - $paid;

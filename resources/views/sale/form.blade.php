@@ -233,8 +233,10 @@ $url = Route::currentRouteName();
 <div class="row">
     <div class="col-md-3 form-group">
         <label for="paid_amount">Paid Amount <span class="text-danger">*</span></label>
+        {{-- Total received for this sale (initial payment + later due payments
+             - refunds), NOT just the first transaction. --}}
         <input type="number" class="form-control" name="paid_amount" id="paid_amount" step="any"
-            min="0" required value="{{ $url === 'sales.edit' ? $sale->transactions->first()->paid_amount : 0 }}">
+            min="0" value="{{ $url === 'sales.edit' ? $sale->paid_amount : 0 }}">
 
         @if($url === 'sales.edit' && isset($sale) && $sale->transactions != null)
         <table class="table table-bordered" id="transactions_table">

@@ -50,8 +50,8 @@
                                 $due = $invoice->final_amount - $invoice->paid_amount;
                                 $selected = in_array($invoice->id, $oldSelectedInvoices) ? 'selected' : '';
                             @endphp
-                            <option value="{{ $invoice->id }}" data-id="{{ $invoice->id }}" data-due="{{ $due }}" {{ $selected }}>
-                                Invoice #{{ $invoice->id }} (Due: {{ number_format($due, 2) }})
+                            <option value="{{ $invoice->id }}" data-id="{{ $invoice->id }}" data-due="{{ $due }}" data-number="{{ $invoice->invoice_no }}" {{ $selected }}>
+                                Invoice #{{ $invoice->invoice_no }} (Due: {{ number_format($due, 2) }})
                             </option>
                         @endforeach
                     </select>
@@ -65,7 +65,7 @@
                     <table class="table table-bordered" id="invoice_table">
                         <thead>
                             <tr>
-                                <th>Invoice ID</th>
+                                <th>Invoice Number</th>
                                 <th>Due Amount</th>
                                 <th>Payment Amount</th>
                                 <th>Action</th>
@@ -140,14 +140,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const addedInvoices = {};
 
     // Function to add invoice row
-    function addInvoiceRow(invoiceId, due) {
+    function addInvoiceRow(invoiceId, due,number) {
         if (addedInvoices[invoiceId]) return; // prevent duplicates
         addedInvoices[invoiceId] = true;
 
         const row = document.createElement('tr');
         row.setAttribute('data-id', invoiceId);
         row.innerHTML = `
-            <td>${invoiceId}<input type="hidden" name="invoices[${invoiceId}][id]" value="${invoiceId}"></td>
+            <td>${number}<input type="hidden" name="invoices[${invoiceId}][id]" value="${invoiceId}"></td>
             <td>${due}<input type="hidden" name="invoices[${invoiceId}][due]" value="${due}"></td>
             <td>
                 <input type="number" class="form-control" name="invoices[${invoiceId}][payment]"
@@ -164,7 +164,8 @@ document.addEventListener('DOMContentLoaded', function () {
     Array.from(selectInvoice.selectedOptions).forEach(option => {
         const invoiceId = option.getAttribute('data-id');
         const due = parseFloat(option.getAttribute('data-due') || 0).toFixed(2);
-        if (invoiceId && due > 0) addInvoiceRow(invoiceId, due);
+        const number = option.getAttribute('data-number');
+        if (invoiceId && due > 0) addInvoiceRow(invoiceId, due, number);
     });
 
     // On select change, refresh table rows
@@ -183,7 +184,8 @@ document.addEventListener('DOMContentLoaded', function () {
         Array.from(selectInvoice.selectedOptions).forEach(option => {
             const invoiceId = option.getAttribute('data-id');
             const due = parseFloat(option.getAttribute('data-due') || 0).toFixed(2);
-            if (invoiceId && due > 0) addInvoiceRow(invoiceId, due);
+            const number = option.getAttribute('data-number');
+            if (invoiceId && due > 0) addInvoiceRow(invoiceId, due, number);
         });
     });
 
@@ -192,6 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.classList.contains('remove-row')) {
             const row = e.target.closest('tr');
             const id = row.getAttribute('data-id');
+            const number = row.getAttribute('data-number');
             row.remove();
             delete addedInvoices[id];
 

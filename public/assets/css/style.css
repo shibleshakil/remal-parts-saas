@@ -89,3 +89,16 @@ div.dataTables_wrapper div.dataTables_length select {
 .gap-1 {
     gap: .25rem !important;
 }
+
+.mini-summery{
+    flex-wrap: wrap;
+}
+
+.mini-summery > div{
+    flex: 1 1 0;
+    min-width: 160px;
+}
+
+.mini-summery .card{
+    width: 100%;
+}

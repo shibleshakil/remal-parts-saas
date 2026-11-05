@@ -113,6 +113,17 @@
         </div>
     </div>
 </div>
+
+<!-- Pay slip modal -->
+<div class="modal fade" id="invoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-body" id="invoiceContent">
+                <!-- Pay slip will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('script')
@@ -244,7 +255,78 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!valid) {
             e.preventDefault();
             alert('Please enter valid payment amounts for all selected invoices.');
+            return;
         }
+
+        // 2) Submit handler (AJAX)
+        e.preventDefault();
+        const formEl = this;
+        let formData = new FormData(formEl);
+
+        // remove previous errors inside this form
+        $(form).find('.text-danger').remove();
+        const submitBtn = $(this).find('button[type="submit"]');
+
+        $.ajax({
+            url: $(form).attr('action'),
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            complete: function() {
+                submitBtn.removeAttr('disabled');
+                submitBtn.find('.spinner-border').remove();
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Inject pay slip into modal
+                    $('#invoiceContent').html(response.view);
+
+                    // Show the modal
+                    $('#invoiceModal').modal('show');
+
+                    // After modal is shown, trigger print
+                    $('#invoiceModal').on('shown.bs.modal', function() {
+                        setTimeout(function() {
+                            // Print only the modal content
+                            const printContents = document.getElementById('invoiceContent').innerHTML;
+                            const originalContents = document.body.innerHTML;
+
+                            // Replace page content with slip temporarily
+                            document.body.innerHTML = printContents;
+                            window.print();
+
+                            // Restore original page content
+                            document.body.innerHTML = originalContents;
+                            // Close modal and redirect after print
+                            $('#invoiceModal').modal('hide');
+                            window.location.href = "{{ route('supplier.index') }}";
+                        }, 500);
+                    });
+                }
+            },
+            error: function(xhr) {
+                submitBtn.removeAttr('disabled');
+                submitBtn.find('.spinner-border').remove();
+
+                let message = 'Something went wrong.';
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.errors) {
+                        message = typeof xhr.responseJSON.errors === 'string'
+                            ? xhr.responseJSON.errors
+                            : Object.values(xhr.responseJSON.errors).join('\n');
+                    } else if (xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+                }
+
+                Swal.fire({
+                    title: "Error",
+                    text: message,
+                    icon: "error"
+                });
+            }
+        });
     });
 });
 </script>

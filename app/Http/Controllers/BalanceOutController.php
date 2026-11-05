@@ -35,12 +35,14 @@ class BalanceOutController extends Controller
             'bank_id' => 'nullable|required_if:payment_method,bank_transfer|exists:banks,id',
         ]);
 
+        // Validate BEFORE opening a transaction — an early return inside
+        // beginTransaction() would abandon an open transaction.
+        if($data['final_amount'] > $balance->balance){
+            return redirect()->back()->with('error', 'Balance exceeds, please check available balance')->withInput();
+        }
+
         try {
             DB::beginTransaction();
-
-            if($data['final_amount'] > $balance->balance){
-                return redirect()->back()->with('error', 'Balance exceeds, please check available balance');
-            }
 
             //AddBalance
             $balance->decrement('balance', $data['final_amount'] ?? 0);
@@ -94,18 +96,19 @@ class BalanceOutController extends Controller
             'bank_id' => 'nullable|required_if:payment_method,bank_transfer|exists:banks,id',
         ]);
 
+        // Validate BEFORE opening a transaction (see store()).
+        $balance = Balance::withoutGlobalScopes()
+                            ->firstOrCreate(
+                                ['branch_id' => active_branch_id()],
+                                ['balance' => 0]
+                            );
+
+        if($data['final_amount'] > $balance->balance){
+            return redirect()->back()->with('error', 'Balance exceeds, please check available balance')->withInput();
+        }
+
         try {
             DB::beginTransaction();
-
-            $balance = Balance::withoutGlobalScopes()
-                                ->firstOrCreate(
-                                    ['branch_id' => active_branch_id()],
-                                    ['balance' => 0]
-                                );
-
-            if($data['final_amount'] > $balance->balance){
-                return redirect()->back()->with('error', 'Balance exceeds, please check available balance');
-            }
 
             // 🔹 Find existing transaction
             $transaction = Transaction::where('type', 'balance_out')->findOrFail($id);
