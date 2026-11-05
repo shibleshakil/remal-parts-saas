@@ -8,14 +8,27 @@ class ArtisanCommandController extends Controller
 {
     public function run($command)
     {
-        // Map the route parameters to actual Artisan commands
-        $artisanCommand = match ($command) {
-            'optimize'    => 'optimize:clear',       // Clears and caches config, routes, and views
-            'route-clear' => 'route:clear',
-            'migrate'     => 'migrate',        // Runs outstanding migrations
-            'migrate-status' => 'migrate:status',
-            'migrate-rollback'    => 'migrate:rollback --step=1', // Rolls back the last batch of migrations
-            default       => null,
+        // Access: a logged-in user (normal /run route), OR a matching
+        // DEPLOY_TOKEN query param (deploy route — used on shared hosting
+        // with no CLI, where login itself may be broken by missing tables).
+        // When no token is configured the deploy access simply 404s.
+        $token = config('app.deploy_token');
+        $tokenOk = !empty($token) && hash_equals($token, (string) request()->query('token'));
+
+        if (!auth()->check() && !$tokenOk) {
+            abort(404);
+        }
+
+        // Map the route parameters to actual Artisan commands.
+        // --force: never prompt for confirmation in production.
+        [$artisanCommand, $arguments] = match ($command) {
+            'optimize'    => ['optimize:clear', []],       // Clears and caches config, routes, and views
+            'route-clear' => ['route:clear', []],
+            'migrate'     => ['migrate', ['--force' => true]],        // Runs outstanding migrations
+            'migrate-status' => ['migrate:status', []],
+            'migrate-rollback' => ['migrate:rollback', ['--step' => 1, '--force' => true]], // Rolls back the last batch of migrations
+            'db-seed'     => ['db:seed', ['--class' => 'Database\Seeders\MasterSeeder', '--force' => true]], // Roles, permissions, super admin, branch
+            default       => [null, []],
         };
 
         if (!$artisanCommand) {
@@ -24,7 +37,7 @@ class ArtisanCommandController extends Controller
 
         try {
             // Run the command
-            $exitCode = Artisan::call($artisanCommand);
+            $exitCode = Artisan::call($artisanCommand, $arguments);
 
             // Capture the command line output text
             $output = Artisan::output();

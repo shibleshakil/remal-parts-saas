@@ -32,6 +32,20 @@ return new class extends Migration
 
     public function up(): void
     {
+        // Step 0: ensure branch 1 exists BEFORE backfilling branch_id=1 —
+        // the FK below would otherwise fail on any database that already
+        // has data (e.g. an imported production dump). Idempotent: the
+        // MasterSeeder later updates this row with the real branch info.
+        if (!DB::table('branches')->where('id', 1)->exists()) {
+            DB::table('branches')->insert([
+                'id'         => 1,
+                'name'       => 'Main Branch',
+                'code'       => '0001',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         // Step 1: Add nullable column
         foreach ($this->tables as $tbl) {
             Schema::table($tbl, function (Blueprint $table) {

@@ -30,6 +30,10 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
+    // Secret for the /deploy/{command} route (artisan over HTTP on shared
+    // hosting). Leave empty to disable browser access entirely.
+    'deploy_token' => env('DEPLOY_TOKEN'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode

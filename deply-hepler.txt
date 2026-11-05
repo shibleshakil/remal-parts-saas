@@ -1,0 +1,5 @@
+run step by step (tocken in env)
+/deploy/migrate-status?token=…   → confirm the 9 pending
+/deploy/migrate?token=…          → creates tables + branch_id columns, backfills branch 1 (guard above makes it safe), your 34,810 balance row becomes branch 1's balance
+/deploy/db-seed?token=…          → MasterSeeder: refines branch 1, resets admin@admin.com / Admin@123, creates Super Admin role + 154 permissions, assigns them
+/deploy/optimize?token=…         → clear caches, then log in

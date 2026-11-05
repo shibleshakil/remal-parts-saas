@@ -28,12 +28,20 @@ use Illuminate\Support\Facades\Route;
 
 Auth::routes();
 
+// Artisan over HTTP for shared hosting WITHOUT CLI (no login needed —
+// guarded by DEPLOY_TOKEN in .env; 404s unless the token matches).
+// Usage: /deploy/migrate-status?token=YOUR_DEPLOY_TOKEN
+Route::get('/deploy/{command}', [ArtisanCommandController::class, 'run'])
+    ->whereIn('command', ['optimize', 'route-clear', 'migrate', 'migrate-status', 'migrate-rollback', 'db-seed'])
+    ->name('deploy');
+
+
 Route::group(['middleware' => ['auth']], function () {
 
     // artisan command (to run from browser, url: /run/{command})
 
     Route::get('/run/{command}', [ArtisanCommandController::class, 'run'])
-        ->whereIn('command', ['optimize', 'route-clear', 'migrate','migrate-status', 'migrate-rollback'])
+        ->whereIn('command', ['optimize', 'route-clear', 'migrate','migrate-status', 'migrate-rollback', 'db-seed'])
         ->name('run');
 
     Route::get('/', [HomeController::class, 'index'])->name('home');
