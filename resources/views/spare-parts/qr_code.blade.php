@@ -40,6 +40,8 @@
 
     <script>
         window.print();
+        window.location.href = '{{ url()->previous() }}';
+        window.close();
     </script>
 </body>
 </html>
