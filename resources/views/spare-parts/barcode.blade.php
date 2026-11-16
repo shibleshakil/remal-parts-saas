@@ -39,9 +39,15 @@
     </div>
 
     <script>
-        window.print();
-        window.location.href = '{{ url()->previous() }}';
-        window.close();
+        // Automatically trigger print
+        window.onload = function() {
+            window.print();
+
+            // After print, close tab
+            window.onafterprint = function() {
+                window.close();
+            };
+        };
     </script>
 </body>
 </html>
